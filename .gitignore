@@ -1,0 +1,4 @@
+shots/
+dist/
+*.db
+.DS_Store

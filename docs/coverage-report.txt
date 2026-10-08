@@ -1,0 +1,22 @@
+account      19/ 22  (同名 19, 改名 0, 缺 3) 缺 OAuthButtons, SettingsSection, SettingsRow
+agent        23/ 26  (同名 23, 改名 0, 缺 3) 缺 AgentRows, AgentCode, AgentToggle
+chart        34/ 56  (同名 24, 改名 10, 缺 22) 缺 OHLCChart, HeikinAshiChart, ChartExport, NewChart, ChartValue, ChartTypeSwitcher, DensityPlot, DepthChart, DrawingToolbar, IndicatorParamsField, IndicatorPane, IndicatorSelector, IntervalSelector, LineQuoteChart, MarketHeatmap, CompareLegend, MultiChartLayout, RealtimeChart, TimeRangeSelector, TrendIndicator, VolumeChart, VolumeProfile
+chat         54/ 61  (同名 54, 改名 0, 缺 7) 缺 ChatContainer, ChatEmptyState, ContextMentionMenu, LinkPreviewCard, ProjectKnowledgePanel, SharedConversationView, WelcomeScreen
+code         26/ 30  (同名 25, 改名 1, 缺 4) 缺 CodeAnsiSpans, CodeMatchSpans, HexViewer, LogViewer
+data          7/ 11  (同名 7, 改名 0, 缺 4) 缺 DataSelectTheme, DataPlaceholder, DataError, Statistic
+datetime     32/ 35  (同名 32, 改名 0, 缺 3) 缺 CalendarFirstWeekday, RelativeTimeText, YearView
+devtools     17/ 17  (同名 16, 改名 1, 缺 0) ✓
+display      11/ 11  (同名 11, 改名 0, 缺 0) ✓
+feedback     24/ 33  (同名 23, 改名 1, 缺 9) 缺 CostBreakdown, EvalResultTable, Meter, ShowToast, DismissToast, Toaster, TokenUsageChart, ToolRegistryPanel, TraceViewer
+files        17/ 17  (同名 17, 改名 0, 缺 0) ✓
+finance      33/ 39  (同名 33, 改名 0, 缺 6) 缺 CurrencyConverter, IndexCard, NewsFeed, OrderConfirmDialog, Screener, TradeHistoryTable
+git          20/ 20  (同名 20, 改名 0, 缺 0) ✓
+input        42/ 53  (同名 42, 改名 0, 缺 11) 缺 DockPanel, MultiSelectCheck, NumberInputButton, SelectField, SelectCheck, SelectPanel, SelectRow, SelectNote, SliderControl, TextInputEditor, Toggle
+layout       11/ 11  (同名 11, 改名 0, 缺 0) ✓
+media        19/ 21  (同名 19, 改名 0, 缺 2) 缺 Playlist, MediaToggleAction
+messaging    19/ 20  (同名 19, 改名 0, 缺 1) 缺 IncomingCallDialog
+navigation   12/ 14  (同名 12, 改名 0, 缺 2) 缺 SegmentedControl, TabsStyle
+overlay      10/ 16  (同名 10, 改名 0, 缺 6) 缺 DialogPanel, Overlay, OverlayAnchored, PopoverRoom, PopoverWide, PopupMenuOpen
+project      17/ 19  (同名 17, 改名 0, 缺 2) 缺 PriorityName, PriorityIndicator
+
+基线 532 项：同名 434 + 改名 13 = 447  真正缺 85  → 84%
