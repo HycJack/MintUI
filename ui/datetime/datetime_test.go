@@ -349,9 +349,9 @@ func TestDurationTextWritesTwoUnits(t *testing.T) {
 // so a DurationText that recursed on the negation of its argument never came
 // back, and the frame that asked it took the process with it. It has to answer
 // with a length as well — a bare "-" would be a sign with nothing after it.
+// It is the extreme case of a rule the two tests below hold in general.
 func TestDurationTextSurvivesTheMostNegativeDuration(t *testing.T) {
-	got := datetime.DurationText(math.MinInt64)
-	if got == "" || got == "-" {
+	if got := datetime.DurationText(math.MinInt64); got == "" || got == "-" {
 		t.Errorf("DurationText(math.MinInt64) = %q, which says no length at all", got)
 	}
 }
@@ -372,6 +372,55 @@ func TestDurationTextSaysSomethingAboutSubSecondDurations(t *testing.T) {
 	}
 	if back != 1500*time.Millisecond {
 		t.Errorf("read back %v, want 1.5s", back)
+	}
+}
+
+// A length the units table cannot name came out as nothing at all, and a
+// negative one as a bare sign, so a sub-millisecond duration — an event two
+// timestamps a few hundred microseconds apart, a test's own elapsed time —
+// printed an empty line. The table counts down to the nanosecond, which is the
+// smallest duration there is, and what it writes, it reads back.
+func TestDurationTextCountsDownToTheNanosecond(t *testing.T) {
+	for _, tc := range []struct {
+		d    time.Duration
+		want string
+	}{
+		{time.Nanosecond, "1ns"},
+		{999 * time.Nanosecond, "999ns"},
+		{time.Microsecond, "1µs"},
+		{500 * time.Microsecond, "500µs"},
+		{1500 * time.Microsecond, "1ms 500µs"},
+		{-time.Nanosecond, "-1ns"},
+		{-500 * time.Microsecond, "-500µs"},
+	} {
+		got := datetime.DurationText(tc.d)
+		if got != tc.want {
+			t.Errorf("DurationText(%v) = %q, want %q", tc.d, got, tc.want)
+		}
+		back, err := datetime.ParseDurationText(got)
+		if err != nil {
+			t.Errorf("ParseDurationText(%q) after DurationText(%v): %v", got, tc.d, err)
+			continue
+		}
+		if back != tc.d {
+			t.Errorf("%q reads back as %v, want %v", got, back, tc.d)
+		}
+	}
+}
+
+// Nothing is the one answer this may not give, and the sign alone is nothing
+// with a mark in front of it: an empty duration reads as a missing value
+// rather than as no time at all, which is what its own doc has always said.
+func TestDurationTextNeverAnswersWithNothing(t *testing.T) {
+	for _, d := range []time.Duration{
+		time.Nanosecond, 999 * time.Nanosecond, time.Microsecond,
+		999 * time.Microsecond, time.Millisecond, time.Second, time.Hour,
+		-time.Nanosecond, -999 * time.Nanosecond, -time.Microsecond,
+		-time.Millisecond,
+	} {
+		if got := datetime.DurationText(d); got == "" || got == "-" {
+			t.Errorf("DurationText(%v) = %q, which says no length at all", d, got)
+		}
 	}
 }
 

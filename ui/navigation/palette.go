@@ -356,11 +356,13 @@ func paletteBody(c *ui.Context, open *bool, rows []Command, opts CommandPaletteO
 	// before a closure inside its own children can ask it about a key.
 	keys := ui.Box(c).FillWidth()
 	keys.Children(func() {
-		// Escape, once more and only for a non-modal palette: the layer
-		// behind reads it when it is modal, and a sheet that does not dim the
-		// page is showing that page on purpose — so the promise that Escape
-		// closes the palette either way has to be kept here, in the palette's
-		// own body, where an overlay's keys arrive first.
+		// Escape, read here and only for a non-modal palette. An overlay key
+		// is delivered to one registration — the last one made — and
+		// ui/overlay's layer has already asked for Escape by the time this
+		// body is built when the layer is modal, so asking for it again here
+		// would take it from the layer that owns it. A non-modal layer asks
+		// for nothing, which is why the promise that Escape closes the palette
+		// either way is kept in this body rather than in ui/overlay.
 		if opts.NonModal && keys.OverlayShortcut(0, ui.KeyEscape) {
 			*open = false
 		}

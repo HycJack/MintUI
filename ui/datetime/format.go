@@ -257,14 +257,20 @@ func InRange(t, start, end time.Time) bool {
 // ── durations ────────────────────────────────────────────────────────────────
 
 // DurationText writes a length the way a person says it: the two largest
-// units that are not zero, such as "1h 30m", "2d 4h" or "45s". A length under
-// a second is in milliseconds, because there is no smaller unit here to count
-// it in and rounding it to "0s" would answer with a different length.
+// units that are not zero, such as "1h 30m", "2d 4h" or "45s".
+//
+// Below a second it counts in milliseconds, microseconds and nanoseconds
+// rather than rounding, because a rounded answer is a different length — and
+// rounding far enough left a length under a millisecond with no unit to be
+// counted in, which came out as an empty string rather than as nothing at all.
+// The table ends at the nanosecond because that is the smallest duration there
+// is, so every length has an answer.
 //
 // Two units is the limit because a booking form has room for "1d 2h 30m" and
 // nothing for the rest. Zero is "0m" rather than an empty string, because an
 // empty duration field reads as a missing value rather than as no time at all.
-// A negative length keeps its sign in front, as "-30m".
+// A negative length keeps its sign in front, as "-30m", and it keeps a length
+// behind the sign: "-1ns", never a sign on its own.
 func DurationText(d time.Duration) string {
 	neg := d < 0
 	// The magnitude, in unsigned arithmetic, and never a recursion on the
@@ -286,6 +292,9 @@ func DurationText(d time.Duration) string {
 	}{
 		{24 * time.Hour, "d"}, {time.Hour, "h"}, {time.Minute, "m"},
 		{time.Second, "s"}, {time.Millisecond, "ms"},
+		// The same U+00B5 micro sign Go's own Duration writes, so a length
+		// reads the same here as it does in a log line or a test failure.
+		{time.Microsecond, "µs"}, {time.Nanosecond, "ns"},
 	}
 	var parts []string
 	for _, u := range units {
@@ -315,26 +324,34 @@ func ParseDurationText(s string) (time.Duration, error) {
 	}
 	var total time.Duration
 	for _, part := range strings.Fields(s) {
-		// "ms" is two letters where every other unit is one, so the unit is
-		// taken off the end by what it is rather than by its last byte: "500"
-		// is half a second, not five hundred of nothing.
-		var unit string
-		switch {
-		case strings.HasSuffix(part, "ms"):
-			unit = "ms"
-			part = part[:len(part)-2]
-		case len(part) > 1:
-			unit, part = part[len(part)-1:], part[:len(part)-1]
-		default:
+		// The unit is taken off the end by what it is rather than by its last
+		// byte. "ms", "µs" and "ns" are two letters where every other unit is
+		// one, and "ns" ends in "s": read by its last byte, "500ns" is five
+		// hundred seconds.
+		num, unit := "", ""
+		for _, u := range [...]string{"ms", "µs", "ns"} {
+			if strings.HasSuffix(part, u) {
+				num, unit = part[:len(part)-len(u)], u
+				break
+			}
+		}
+		if num == "" && len(part) > 1 {
+			num, unit = part[:len(part)-1], part[len(part)-1:]
+		}
+		if num == "" {
 			return 0, fmt.Errorf("datetime: %q is not a duration", s)
 		}
-		n, err := strconv.Atoi(part)
+		n, err := strconv.Atoi(num)
 		if err != nil {
 			return 0, fmt.Errorf("datetime: %q is not a duration", s)
 		}
 		switch unit {
 		case "ms":
 			total += time.Duration(n) * time.Millisecond
+		case "µs":
+			total += time.Duration(n) * time.Microsecond
+		case "ns":
+			total += time.Duration(n) * time.Nanosecond
 		case "s":
 			total += time.Duration(n) * time.Second
 		case "m":
