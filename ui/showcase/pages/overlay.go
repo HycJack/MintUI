@@ -196,11 +196,13 @@ func anchorSection(c *ui.Context) {
 		// caller's *bool on every frame where neither the anchor nor the card
 		// is under the pointer, so a caller has no way to pin one open and a
 		// headless draw has no pointer at all: leaving the flag true would paint
-		// a frame no window is ever in, and two draws of it would disagree,
-		// which is how -shots started failing on a clean tree. A PopoverRoom is
-		// the same panel on the roomier surface — and it takes the flag without
-		// taking it back, which is the whole difference. It also stands here
-		// rather than a second Popover because the stage above is that one.
+		// a frame no window is ever in. It also went quietly wrong rather than
+		// loudly — `gallery -shots` draws every page once to check it and then
+		// again for the PNG, so the check's draw spent the flag and the exported
+		// picture came out with no card on it. A PopoverRoom is the same panel
+		// on the roomier surface, and it takes the flag without taking it back.
+		// It also stands here rather than a second Popover because the stage
+		// above is that one.
 		overlay.PopoverRoom(c, anchor, &roomOpen, overlay.PopoverRoomOptions{
 			Modal:    false,
 			Title:    "Andre Thomson",

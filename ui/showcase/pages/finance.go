@@ -103,13 +103,6 @@ func init() {
 		Render: func(c *ui.Context) {
 			financePage(c)
 		},
-		// ClockDriven: the TickerTape in the quotes section takes its scroll
-		// offset from the painter's own clock, so two renders of this page are
-		// two frames of a tape in motion and a tape held still would be showing
-		// something the component never does. The gate draws with reduced
-		// motion, where the tape rests, so this says where the page would go
-		// if that were ever not so.
-		ClockDriven: true,
 	})
 }
 

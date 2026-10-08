@@ -54,6 +54,10 @@ var (
 // components are declared in: a channel, a turn in it, the mail behind it,
 // the people, the call. A gallery read as an index tells a reader what exists;
 // a gallery read as a thing tells them what the pieces are for.
+//
+// UserProfileCard is the one piece here named rather than drawn, because a
+// caller cannot hold one open and a screenshot has no pointer to hold it with;
+// messagingPeopleSection says so where its slot would have been.
 
 func init() {
 	showcase.Register(showcase.Page{
@@ -302,7 +306,7 @@ func messagingMailSection(c *ui.Context) {
 
 func messagingPeopleSection(c *ui.Context) {
 	k := core.Tokens(c)
-	showcase.Section(c, "人 · MemberList / OnlineStatus / UserProfileCard / StatusSetter / ParticipantSummary")
+	showcase.Section(c, "人 · MemberList / OnlineStatus / StatusSetter / ParticipantSummary")
 
 	members := []messaging.Member{
 		{ID: "u1", Name: "Andre Thomson", Handle: "@andre", Role: "engineer",
@@ -352,16 +356,18 @@ func messagingPeopleSection(c *ui.Context) {
 					})
 				}
 			})
-			showcase.Field(c, "UserProfileCard — 指针停在名字上才出来的小卡")
+			showcase.Field(c, "UserProfileCard 的锚点 — 指针停在名字上，卡才出来")
 			// Only the anchor is drawn, and nothing here stands in for the card.
 			// A UserProfileCard is an overlay.HoverCard, and ui/overlay/
 			// hovercard.go writes false into the caller's *bool on every frame
 			// where neither the anchor nor the card is under the pointer, so a
 			// caller has no way to hold one open and a headless draw has no
 			// pointer at all. Leaving the flag true would paint a frame no
-			// window is ever in, and two draws of it would disagree, which is
-			// how -shots started failing on a clean tree. What a screenshot can
-			// be trusted to show is the control the card hangs off, the way the
+			// window is ever in, and it went quietly wrong rather than loudly:
+			// `gallery -shots` draws every page once to check it and then again
+			// for the PNG, so the check's draw spent the flag and the exported
+			// picture came out with no card on it. What a screenshot can be
+			// trusted to show is the control the card hangs off, the way the
 			// Tooltip on the overlay page shows its tip's.
 			input.Button(c, "Andre Thomson", input.ButtonOptions{})
 		})

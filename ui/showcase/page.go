@@ -42,21 +42,6 @@ type Page struct {
 	// out of a warning. A page that sets it and is still cut in half is a
 	// page with a bug in it.
 	Anchored bool
-	// ClockDriven says the page's demo depends on the real clock, so its two
-	// draws are allowed to come out different and the determinism gate skips it.
-	// A ticker tape whose offset is the painter's own clock is the shape of the
-	// thing: a gallery that showed one held still would be showing something
-	// the component never does, and -shots writes two PNGs of it that cannot
-	// match.
-	//
-	// The gate draws with reduced motion, which settles most clock-driven
-	// demos on its own, so a page that still needs saying so is naming which
-	// part of its demo survives that.
-	//
-	// It is a way of saying "I know, and I have looked", not a way of getting
-	// out of a check. A page that sets it to cover a difference it has not
-	// accounted for is a page whose gate is now lying.
-	ClockDriven bool
 	// Wants are strings the page must actually draw. They are what stops a
 	// page from quietly going blank, and they are checked by the gate test
 	// and by `gallery -check`.
