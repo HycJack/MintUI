@@ -57,10 +57,10 @@ func CodePage() showcase.Page {
 			"Terminal — 尾部是提示符，Level 是调用方给的一行一个",
 			"TerminalSearch — 终端没有列表可给，只有两个数",
 			"CommandHistory — 最新的在下面",
-			"构建 · OutputPanel / ProblemsPanel / LogView",
+			"构建 · OutputPanel / ProblemsPanel / LogViewer",
 			"OutputPanel — 头部说还在跑，坏行染 DangerBg",
 			"ProblemsPanel — 按说的顺序，不按严重度排序",
-			"LogView — 左边的时间是调用方的格式，右边的来源只在要的时候画",
+			"LogViewer — 左边的时间是调用方的格式，右边的来源只在要的时候画",
 			"不过滤",
 			"Filter: Warn — 只剩三行，头上的计数也跟着变",
 			"查找 · FindWidget / SearchPanel / CodeMatchTokens",
@@ -76,8 +76,8 @@ func CodePage() showcase.Page {
 			"DebugToolbar — 状态贴在行尾，不夹在两个按钮中间",
 			"ProcessList — CPU 与内存是调用方给的字符串",
 			"CompletionMenu — 菜单归它要补的那个字段，不归窗口",
-			"字节与剖析 · HexView / Flamegraph",
-			"HexView — 偏移、两组字节、可打印的字符，三处对齐",
+			"字节与剖析 · HexViewer / Flamegraph",
+			"HexViewer — 偏移、两组字节、可打印的字符，三处对齐",
 			"Flamegraph — 宽度是调用方的比例，所以宽度是必须的",
 			"纯函数 — 先算出答案，再画",
 			"Highlight — 一行切成若干 run，每个 run 一个 TokenKind",
@@ -684,7 +684,7 @@ func terminalSection(c *ui.Context) {
 				})
 		})
 	codeNote(c, []string{
-		"Follow 是终端的，LogView 故意没有：一个终端要的是别滚走，一个日志要的是别重排。",
+		"Follow 是终端的，LogViewer 故意没有：一个终端要的是别滚走，一个日志要的是别重排。",
 		"命令历史最新的在最后，和 shell 自己相反——面板是从上往下读的。",
 	})
 }
@@ -692,7 +692,7 @@ func terminalSection(c *ui.Context) {
 // buildSection is the work: what a build said, what the compiler made of it,
 // and the log the two of them are read out of.
 func buildSection(c *ui.Context) {
-	showcase.Section(c, "构建 · OutputPanel / ProblemsPanel / LogView")
+	showcase.Section(c, "构建 · OutputPanel / ProblemsPanel / LogViewer")
 
 	ui.Row(c).Width(unit(c, 236)).Gap(unit(c, 4)).AlignItems(ui.Start).
 		Children(func() {
@@ -718,13 +718,13 @@ func buildSection(c *ui.Context) {
 				})
 		})
 
-	showcase.Field(c, "LogView — 左边的时间是调用方的格式，右边的来源只在要的时候画")
+	showcase.Field(c, "LogViewer — 左边的时间是调用方的格式，右边的来源只在要的时候画")
 	ui.Row(c).Width(unit(c, 236)).Gap(unit(c, 4)).AlignItems(ui.Start).
 		Children(func() {
 			ui.Column(c).WidthPercent(share(2)).Shrink(0).Gap(unit(c, 1.5)).
 				Children(func() {
 					showcase.Field(c, "不过滤")
-					code.LogView(c, code.LogOptions{
+					code.LogViewer(c, code.LogOptions{
 						Name: "build", Lines: codeBuildLines,
 						Height: codeRows(c, 7), Width: unit(c, 116),
 						ShowSource: codeYes(),
@@ -733,7 +733,7 @@ func buildSection(c *ui.Context) {
 			ui.Column(c).WidthPercent(share(2)).Shrink(0).Gap(unit(c, 1.5)).
 				Children(func() {
 					showcase.Field(c, "Filter: Warn — 只剩三行，头上的计数也跟着变")
-					code.LogView(c, code.LogOptions{
+					code.LogViewer(c, code.LogOptions{
 						Name: "build · warnings and worse", Lines: codeBuildLines,
 						Height: codeRows(c, 7), Width: unit(c, 116),
 						Filter: code.LogWarn,
@@ -741,8 +741,8 @@ func buildSection(c *ui.Context) {
 				})
 		})
 	codeNote(c, []string{
-		"OutputPanel 就是 LogView 加一个头：日志是读的东西，输出是看的东西。",
-		"LogView 不重排。从上往下读就是事情发生的顺序，谁把最新的放到第一行是替调用方做了决定。",
+		"OutputPanel 就是 LogViewer 加一个头：日志是读的东西，输出是看的东西。",
+		"LogViewer 不重排。从上往下读就是事情发生的顺序，谁把最新的放到第一行是替调用方做了决定。",
 	})
 }
 
@@ -900,14 +900,14 @@ func runSection(c *ui.Context) {
 // profileSection is the two views that are not lines of source: the bytes of
 // a file, and where a program's time went.
 func profileSection(c *ui.Context) {
-	showcase.Section(c, "字节与剖析 · HexView / Flamegraph")
+	showcase.Section(c, "字节与剖析 · HexViewer / Flamegraph")
 
-	showcase.Field(c, "HexView — 偏移、两组字节、可打印的字符，三处对齐")
+	showcase.Field(c, "HexViewer — 偏移、两组字节、可打印的字符，三处对齐")
 	ui.Row(c).Width(unit(c, 236)).Gap(unit(c, 4)).AlignItems(ui.Start).
 		Children(func() {
 			ui.Column(c).WidthPercent(share(2)).Shrink(0).Gap(unit(c, 1.5)).
 				Children(func() {
-					code.HexView(c, code.HexOptions{
+					code.HexViewer(c, code.HexOptions{
 						Name: "ui/code/frame.png", Data: codeFrameBytes,
 						Height: codeRows(c, 2), Address: 0, Selected: 0,
 					})

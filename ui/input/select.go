@@ -112,6 +112,189 @@ func Select(c *ui.Context, selected *string, choices []Choice, opts SelectOption
 	return sel.Trigger
 }
 
+// SelectFieldOptions configure a SelectField.
+type SelectFieldOptions struct {
+	// Label names the control for assistive technology, and is required: the
+	// trigger's own text is the choice, so it changes as the choice changes
+	// and leaves no stable name to read out.
+	Label string
+	// Value is the words of the current choice, shown on the trigger. Empty
+	// shows the Placeholder instead, in faint ink.
+	Value string
+	// Placeholder is what the trigger says while there is no choice, and is
+	// required whenever Value is empty: a box with an arrow and nothing to
+	// say is a box that opens.
+	Placeholder string
+	// Disabled greys the control out: it takes neither clicks nor focus.
+	Disabled bool
+}
+
+// SelectField is the closed-state face of a dropdown: the box with the
+// current choice's words and the arrow, before any panel is showing.
+//
+// It is the face Select's trigger wears, drawn through ui.SelectBase with
+// the panel already wired to it, as a piece a caller can build a dropdown
+// of its own from: SelectField for the closed state, SelectPanel for the
+// open one, SelectRow for the rows in it. The caller is what keeps the
+// panel's open flag and moves it between the two, because whether a list is
+// showing is the moment of its own interface, the same reason dropdown
+// triggers in this package keep theirs.
+//
+// It is a face rather than a control: it shows the choice it is told and
+// takes no press of its own, so a press lands where the caller put the
+// control rather than on a flag nobody handed it.
+func SelectField(c *ui.Context, opts SelectFieldOptions) *ui.Element {
+	if opts.Label == "" {
+		panic("input: SelectField needs options.Label; its trigger shows the choice, so it has no name of its own to read out")
+	}
+	if opts.Value == "" && opts.Placeholder == "" {
+		panic("input: SelectField needs a Value or a Placeholder; a trigger with no choice and no words is a box that opens")
+	}
+	trigger := ui.Box(c).Role(ui.RolePopUpButton).Label(opts.Label).Tooltip(opts.Label)
+	selectTriggerFace(c, trigger, opts.Disabled)
+	trigger.Children(func() { selectTriggerContent(c, opts.Value, opts.Placeholder, opts.Disabled) })
+	return trigger
+}
+
+// SelectPanelOptions configure a SelectPanel.
+type SelectPanelOptions struct {
+	// Label names the panel for assistive technology and for a test to find
+	// it by.
+	Label string
+	// MaxHeight is how tall the panel's list may be before it scrolls. Zero
+	// is the dropdowns' own cap, a dozen rows' worth.
+	MaxHeight float32
+}
+
+// SelectPanel is the open-state half of a dropdown: the floating surface a
+// panel of options is built on, with the library's one floating look — the
+// radius, the hairline, the shadow, the padding — and the list's own
+// scrolling.
+//
+// body builds the rows inside it, which is why the rows are the caller's
+// SelectRow and not this panel's business: a panel knows how it looks, and
+// the caller knows what a row of its list is.
+//
+// It is the surface Select and MultiSelect build their panels on, taken out
+// to a piece of its own. It is a list rather than a popup: it stays where
+// its caller puts it, and the caller's PopoverBase is what hangs it off a
+// trigger if it is to float.
+func SelectPanel(c *ui.Context, opts SelectPanelOptions, body func()) *ui.Element {
+	if body == nil {
+		panic("input: SelectPanel needs a body to hold its rows; a panel with nothing in it is a shadow")
+	}
+	maxHeight := opts.MaxHeight
+	if maxHeight <= 0 {
+		maxHeight = dropdownMaxHeight
+	}
+	host := ui.Box(c).Role(ui.RoleList)
+	panelFace(c, host)
+	if opts.Label != "" {
+		host.Label(opts.Label)
+	}
+	host.Children(func() {
+		popupList(c, maxHeight).Children(body)
+	})
+	return host
+}
+
+// SelectRowOptions configure a SelectRow.
+type SelectRowOptions struct {
+	// Label is the row's words, and is required: a row with a tick and
+	// nothing beside it is a mark with no name.
+	Label string
+	// Selected is that the row's option is the one chosen. A selected row is
+	// filled and carries a SelectCheck in its mark slot, so it still reads
+	// as the one with the colours off.
+	Selected bool
+	// Note is a second, faint word at the row's trailing edge, such as a
+	// shortcut. Empty leaves it out.
+	Note string
+}
+
+// SelectRow is one row of a single-choice panel: the mark slot, the words,
+// and the selected state. It takes a press and reports it as Clicked, on the
+// row's own element, which is the same convention every row in this package
+// keeps — the caller that built the panel is the one that writes the choice
+// the press meant.
+//
+// Its mark slot is a check and not a box, which is the difference from a
+// MultiSelectCheck: a single choice has no group to check into, and a box in
+// front of the chosen row would read as a second control the row is sitting
+// next to.
+func SelectRow(c *ui.Context, opts SelectRowOptions) *ui.Element {
+	if opts.Label == "" {
+		panic("input: SelectRow needs a Label; a tick with no words beside it has nothing to read out")
+	}
+	f := optionFace{Chosen: opts.Selected, Note: opts.Note}
+	if opts.Selected {
+		f.Mark = checkGlyph
+	}
+	return optionRow(c, opts.Label, f)
+}
+
+// SelectCheck is the tick on a selected row, drawn alone: the two strokes a
+// check is, in the window's accent, at the size a row's mark slot is.
+//
+// It is the same path markFace draws inside its box, taken out so a row, a
+// table and a result line can all mark what is chosen with one tick rather
+// than each inventing its own.
+func SelectCheck(c *ui.Context) *ui.Element {
+	return markFace(c, checkGlyph, core.Density(c).Unit()*3.75)
+}
+
+// SelectNote is the quiet line at the bottom of a panel: a keyboard hint
+// such as "↑↓ select · ↵ confirm", in the faintest ink the window has, at
+// the size a caption is.
+//
+// It is the words the caller gives it, not copy the library owns, because
+// the hint is about the caller's panel — its keys, its confirm — and a
+// library word in the place of a panel's own instruction would be the
+// library talking where the panel should be.
+func SelectNote(c *ui.Context, text string) *ui.Element {
+	if text == "" {
+		panic("input: SelectNote needs a text; a hairline with no words is a divider")
+	}
+	k, u := core.Tokens(c), core.Density(c).Unit()
+	return ui.Box(c).Padding(u*0.5, u*1.5).Children(func() {
+		ui.Text(c, text).SingleLine().TextColor(k.TextFaint).
+			FontSize(core.FontSize(c, theme.CaptionSize))
+	})
+}
+
+// MultiSelectCheckOptions configure a MultiSelectCheck.
+type MultiSelectCheckOptions struct {
+	// Label is the row's words, and is required, as SelectRow's is.
+	Label string
+	// Checked is that the row's option is in the caller's selection. A
+	// checked row is filled and its box carries the tick; an unchecked one
+	// shows the empty box, so the row says what pressing it will do.
+	Checked bool
+	// Note is a second, faint word at the row's trailing edge. Empty leaves
+	// it out.
+	Note string
+}
+
+// MultiSelectCheck is one checkbox-style row of a multi-choice: the box, its
+// checked state, and the words beside it, taking a press and reporting it as
+// Clicked for the caller to add to or take out of its selection.
+//
+// It is the row MultiSelect draws its options with, taken out to a piece of
+// its own. The difference from SelectRow is the mark: a multi-choice's rows
+// carry a box, because the choice is a set and a box is what a member of a
+// set is marked with — SelectRow's lone check would say "the one" where
+// this row may be the seventh of twenty.
+func MultiSelectCheck(c *ui.Context, opts MultiSelectCheckOptions) *ui.Element {
+	if opts.Label == "" {
+		panic("input: MultiSelectCheck needs a Label; a box and a tick with no words beside them have nothing to read out")
+	}
+	m := tickMark
+	if opts.Checked {
+		m = tickOn
+	}
+	return optionRow(c, opts.Label, optionFace{Mark: m, Chosen: opts.Checked, Note: opts.Note})
+}
+
 // SelectSearchOptions configure a SelectSearch.
 type SelectSearchOptions struct {
 	// Label names the control, as Select's does, and is required.

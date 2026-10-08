@@ -38,6 +38,10 @@ type fieldSkin struct {
 	lines int
 	// padY overrides the well's vertical padding.
 	padY float32
+	// mono draws the control in the system's monospace face at the
+	// monospace size, for code and fragments: the text is not prose, and
+	// prose type says nothing about it. It is what a TextInputEditor is.
+	mono bool
 }
 
 // textWell is the box a single-line control sits in.
@@ -78,7 +82,11 @@ func fieldWell(c *ui.Context, s fieldSkin, column bool, build func(w *ui.Element
 			if lines < 1 {
 				lines = 4
 			}
-			h = float32(lines)*lineHeight(c) + padY*2
+			lineH := lineHeight(c)
+			if s.mono {
+				lineH = monoLineHeight(c)
+			}
+			h = float32(lines)*lineH + padY*2
 		}
 	}
 
@@ -91,6 +99,11 @@ func fieldWell(c *ui.Context, s fieldSkin, column bool, build func(w *ui.Element
 	well = well.Padding(padY, u*2.5, padY, u*2.5).Radius(theme.ControlRadius).
 		Background(k.Surface).FontSize(core.FontSize(c, theme.BodySize)).
 		MinHeight(h).FillWidth().Cursor(ui.CursorText).Role(ui.RoleNone)
+	if s.mono {
+		// The editor inside takes its face from the well, as every other
+		// text control here does: the type is decided once, at the box.
+		well.Font("monospace").FontSize(core.FontSize(c, theme.MonoSize))
+	}
 	if s.width > 0 {
 		well.Width(s.width).Shrink(0)
 	}
@@ -161,6 +174,12 @@ func bareInput(c *ui.Context, value *string, label, placeholder string) *ui.Elem
 // text area is measured in lines by.
 func lineHeight(c *ui.Context) float32 {
 	return core.FontSize(c, theme.BodySize) * 1.45
+}
+
+// monoLineHeight is the same measure for the monospace face, which is what a
+// code editor is measured in.
+func monoLineHeight(c *ui.Context) float32 {
+	return core.FontSize(c, theme.MonoSize) * 1.45
 }
 
 // fieldText is the small label text a control carries: a unit after a number,

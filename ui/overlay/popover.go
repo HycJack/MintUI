@@ -53,13 +53,7 @@ type PopoverOptions struct {
 //	})
 func Popover(c *ui.Context, anchor *ui.Element, open *bool, opts PopoverOptions) *ui.Element {
 	panel := anchored(c, anchor, open, opts.Modal, func(p *ui.Element) {
-		Panel(c, p, PanelOptions{
-			Title:    opts.Title,
-			Subtitle: opts.Subtitle,
-			Compact:  true,
-			MaxWidth: opts.MaxWidth,
-			Label:    opts.Label,
-		}, func() {
+		popoverSurface(c, p, opts.Title, opts.Subtitle, opts.Label, true, opts.MaxWidth, func() {
 			if opts.Body != nil {
 				opts.Body()
 			}
@@ -69,6 +63,136 @@ func Popover(c *ui.Context, anchor *ui.Element, open *bool, opts PopoverOptions)
 		return panel
 	}
 	panel.Width(opts.Width)
+	return panel
+}
+
+// popoverSurface dresses host as a floating layer and fills it on the Panel's
+// terms: the three popovers' one surface, which is where their hairline,
+// radius and shadow all come from. compact is the difference between a note
+// and a page — the compact surface a Popover wears, the room surface its wider
+// relatives wear — and one place the three cannot drift apart.
+func popoverSurface(c *ui.Context, host *ui.Element, title, subtitle, label string,
+	compact bool, maxWidth float32, body func()) *ui.Element {
+
+	return Panel(c, host, PanelOptions{
+		Title:    title,
+		Subtitle: subtitle,
+		Compact:  compact,
+		MaxWidth: maxWidth,
+		Label:    label,
+	}, body)
+}
+
+// PopoverRoomOptions configure a PopoverRoom. They are a Popover's, on the
+// roomier surface.
+type PopoverRoomOptions struct {
+	// Title heads the panel, at the sheet size the room surface wears; empty
+	// draws one of body alone.
+	Title string
+	// Subtitle is the second line under the title.
+	Subtitle string
+	// Body is the content.
+	Body func()
+	// Width is the panel's width. Zero takes the anchor's width, which is
+	// what keeps a popover under a row reading as belonging to that row.
+	Width float32
+	// MaxWidth caps it; zero leaves it to the window.
+	MaxWidth float32
+	// Modal puts a scrim over the window and sends outside presses to it, on
+	// the terms PopoverOptions.Modal spells out. It is off by default, and
+	// that default is the point.
+	Modal bool
+	// Label names the panel; empty uses the title.
+	Label string
+}
+
+// PopoverRoom is a Popover with room: the full panel's padding and radius
+// rather than the compact one, for content that is more than a line — a
+// preview with its caption, a description over an action row, a card's
+// history that needs the lines.
+//
+// A Popover wears the compact surface because what it usually owes its
+// reader is one or two lines, and the smaller padding is what keeps a
+// two-line explanation from reading as a dialog. PopoverRoom is for the
+// popover that is a page rather than a note: the room is the point of it,
+// and drawing it compact would spend its whole budget on padding. It hangs
+// off its anchor, clamps against the window's edges and closes on a press
+// outside and on Escape, on exactly the terms a Popover does.
+//
+// The difference from a Popover is the surface and nothing else: the anchor,
+// the modal and the label are its. Where a caller wants the whole width
+// rather than the content's, [PopoverWide] is the third of the three.
+//
+//	core.Use(c, core.Settings{})
+//	PopoverRoom(c, row, &app.expanding, PopoverRoomOptions{
+//	    Title: "CB-2871",
+//	    Body:  func() { preview(); ui.Text(c, "Opened by Dana Reyes") },
+//	})
+func PopoverRoom(c *ui.Context, anchor *ui.Element, open *bool, opts PopoverRoomOptions) *ui.Element {
+	panel := anchored(c, anchor, open, opts.Modal, func(p *ui.Element) {
+		popoverSurface(c, p, opts.Title, opts.Subtitle, opts.Label, false, opts.MaxWidth, func() {
+			if opts.Body != nil {
+				opts.Body()
+			}
+		})
+	})
+	if panel == nil || opts.Width <= 0 {
+		return panel
+	}
+	panel.Width(opts.Width)
+	return panel
+}
+
+// PopoverWideOptions configure a PopoverWide.
+type PopoverWideOptions struct {
+	// Title heads the panel, at the sheet size the room surface wears; empty
+	// draws one of body alone.
+	Title string
+	// Subtitle is the second line under the title.
+	Subtitle string
+	// Body is the content, laid out across the full width the panel takes.
+	Body func()
+	// MaxWidth caps the width, for a window wider than the content deserves;
+	// zero leaves it to the parent.
+	MaxWidth float32
+	// Modal puts a scrim over the window and sends outside presses to it, on
+	// the terms PopoverOptions.Modal spells out. It is off by default, and
+	// that default is the point.
+	Modal bool
+	// Label names the panel; empty uses the title.
+	Label string
+}
+
+// PopoverWide is a popover that takes the whole width of its parent: the room
+// surface of a PopoverRoom with a FillWidth on top, for the content that is a
+// form or a long list rather than a note — a settings block hung off a header,
+// a list of rows that wraps.
+//
+// Where a Popover fits itself to its anchor and a PopoverRoom fits itself to
+// its content, a PopoverWide asks for the full width and lets the content run
+// across it: a form field that is the width of its column reads as a field,
+// and the same form crammed under a button reads as a card. It shares the
+// room surface with PopoverRoom — the two are one panel at two widths, and
+// the width is the whole of their difference, which is why they share the
+// surface helper rather than each keeping their own.
+//
+//	core.Use(c, core.Settings{})
+//	PopoverWide(c, header, &app.filtering, PopoverWideOptions{
+//	    Title: "Filter",
+//	    Body:  func() { filterFields() },
+//	})
+func PopoverWide(c *ui.Context, anchor *ui.Element, open *bool, opts PopoverWideOptions) *ui.Element {
+	panel := anchored(c, anchor, open, opts.Modal, func(p *ui.Element) {
+		popoverSurface(c, p, opts.Title, opts.Subtitle, opts.Label, false, opts.MaxWidth, func() {
+			if opts.Body != nil {
+				opts.Body()
+			}
+		})
+	})
+	if panel == nil {
+		return panel
+	}
+	panel.FillWidth()
 	return panel
 }
 

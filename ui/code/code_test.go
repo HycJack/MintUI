@@ -592,10 +592,10 @@ func TestMinimapInDarkMode(t *testing.T) {
 	}
 }
 
-func TestHexViewShowsBytesAndCharacters(t *testing.T) {
+func TestHexViewerShowsBytesAndCharacters(t *testing.T) {
 	data := []byte("hi\x00there")
 	tt := dark(t, core.Light, func(c *ui.Context) {
-		HexView(c, HexOptions{Name: "notes.txt", Data: data, Height: 160, Width: 460})
+		HexViewer(c, HexOptions{Name: "notes.txt", Data: data, Height: 160, Width: 460})
 	})
 	if !tt.HasText("notes.txt") {
 		t.Errorf("the view must say what it is showing: %q", tt.Texts())
@@ -609,16 +609,16 @@ func TestHexViewShowsBytesAndCharacters(t *testing.T) {
 	}
 }
 
-func TestHexViewInDarkMode(t *testing.T) {
+func TestHexViewerInDarkMode(t *testing.T) {
 	tt := dark(t, core.Dark, func(c *ui.Context) {
-		HexView(c, HexOptions{Name: "notes.txt", Data: []byte("hi"), Height: 120})
+		HexViewer(c, HexOptions{Name: "notes.txt", Data: []byte("hi"), Height: 120})
 	})
 	if !tt.HasText("notes.txt") {
 		t.Errorf("the view must be there in the dark window too: %q", tt.Texts())
 	}
 }
 
-func TestLogViewFiltersAndCounts(t *testing.T) {
+func TestLogViewerFiltersAndCounts(t *testing.T) {
 	lines := []LogLine{
 		{Level: LogDebug, Text: "starting"},
 		{Level: LogWarn, Text: "slow"},
@@ -626,7 +626,7 @@ func TestLogViewFiltersAndCounts(t *testing.T) {
 	}
 	var visible int
 	dark(t, core.Light, func(c *ui.Context) {
-		r := LogView(c, LogOptions{Name: "build", Lines: lines, Height: 200, Filter: LogWarn})
+		r := LogViewer(c, LogOptions{Name: "build", Lines: lines, Height: 200, Filter: LogWarn})
 		// Read in the closure: by the last pass of the frame nothing is
 		// pending, so a single read after settle would be of a later frame.
 		visible = r.Visible()
@@ -636,9 +636,9 @@ func TestLogViewFiltersAndCounts(t *testing.T) {
 	}
 }
 
-func TestLogViewInDarkMode(t *testing.T) {
+func TestLogViewerInDarkMode(t *testing.T) {
 	tt := dark(t, core.Dark, func(c *ui.Context) {
-		LogView(c, LogOptions{
+		LogViewer(c, LogOptions{
 			Name:   "build",
 			Lines:  []LogLine{{Level: LogError, Text: "broke"}},
 			Height: 160,
@@ -1118,7 +1118,7 @@ func TestEveryComponentInsistsOnWhatItCannotDrawWithout(t *testing.T) {
 		{"a hex view with no name", func() {
 			ui.NewTester(func(c *ui.Context) {
 				core.Use(c, core.Settings{})
-				HexView(c, HexOptions{Data: []byte("a"), Height: 100})
+				HexViewer(c, HexOptions{Data: []byte("a"), Height: 100})
 			}, 300, 200)
 		}},
 		{"a problems panel with no name", func() {
@@ -1190,7 +1190,7 @@ func TestEveryComponentInsistsOnWhatItCannotDrawWithout(t *testing.T) {
 		{"a log view with no height", func() {
 			ui.NewTester(func(c *ui.Context) {
 				core.Use(c, core.Settings{})
-				LogView(c, LogOptions{Name: "build"})
+				LogViewer(c, LogOptions{Name: "build"})
 			}, 300, 200)
 		}},
 		{"a variables panel with no name", func() {

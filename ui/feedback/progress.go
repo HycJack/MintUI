@@ -118,6 +118,127 @@ func percentText(v float32) string {
 	return strconv.Itoa(int(v*100+0.5)) + "%"
 }
 
+// MeterOptions configure a Meter.
+type MeterOptions struct {
+	// Value is how much of the capacity is in use, on the same scale as
+	// Max: 4.2 of 10 gigabytes, 12 of 16 turns of context. A value above
+	// Max is not an error — an over-full store is the one thing this bar
+	// exists to shout about — and it draws full, in the danger colour. A
+	// negative value is an error: a used capacity below zero is an input
+	// mistake, not a reading.
+	Value float32
+	// Max is the capacity, the number the value is against. It must be
+	// above zero: a value against nothing is not a fraction, and this bar
+	// will not invent one.
+	Max float32
+	// Label names the capacity. It is required, for the same reason a
+	// Progress's is: "Storage" and "Context" are different meters even when
+	// both sit at the same fraction.
+	Label string
+	// Threshold is a value on the Max scale at which the fill escalates
+	// from the accent to the warning, and a tick is drawn at its position.
+	// Zero draws no threshold. The escalation to danger needs no setting:
+	// over full is over full.
+	Threshold float32
+	// ShowValue puts "value / max" beside the bar as a caption. Off by
+	// default, for the same reason a Progress keeps its percentage off.
+	ShowValue bool
+	// Width and Height bound the bar, the same way a Progress's do: zero
+	// Width takes the parent's, zero Height a standard bar.
+	Width, Height float32
+}
+
+// Meter is a bar showing how much of a fixed capacity a thing has taken:
+// storage against its quota, a context window against its limit, a counter
+// against its ceiling.
+//
+// It is a Meter and not a Progress because the two answer different
+// questions. Progress is "how far along is this piece of work": the number
+// moves one way and finishes at a hundred percent, and a hundred percent is
+// the good outcome. A Meter is "how full is this container": the number
+// goes both ways, may never reach the top, and reaching the top is the bad
+// outcome. A progress bar at a hundred percent is a finished job; a meter
+// at a hundred percent is a full disk.
+//
+// It holds nothing, the way a Progress does: Value is the caller's number,
+// read again each frame, so several meters can move at their own rates
+// without any of them owning a clock.
+func Meter(c *ui.Context, opts MeterOptions) *ui.Element {
+	if opts.Label == "" {
+		panic("feedback: Meter needs a Label; an unnamed bar says nothing")
+	}
+	if opts.Max <= 0 {
+		panic("feedback: Meter needs a Max above 0; a value against a zero " +
+			"capacity is not a fraction")
+	}
+	if opts.Value < 0 {
+		panic("feedback: Meter Value cannot be negative; a used capacity " +
+			"below zero is an input mistake, not a reading")
+	}
+	k, u := core.Tokens(c), core.Density(c).Unit()
+
+	h := opts.Height
+	if h <= 0 {
+		h = u * 2.25
+	}
+	frac := clamp01(opts.Value / opts.Max)
+
+	// The fill escalates as the capacity runs out: past the threshold the
+	// accent becomes a warning, and at the top — or past it — a danger.
+	// An over-full value is the only input that makes a meter urgent on its
+	// own, and it is the one a caller would least expect to have to mark by
+	// hand.
+	sev := core.Neutral
+	if frac >= 1 {
+		sev = core.Danger
+	} else if opts.Threshold > 0 && opts.Value >= opts.Threshold {
+		sev = core.Warning
+	}
+	ink := progressInk(k, sev)
+
+	bar := func() *ui.Element {
+		e := ui.Box(c).FillWidth().Height(h).Radius(h/2).Clip().Shrink(0).
+			Background(k.Surface).Role(ui.RoleProgress).Label(opts.Label).
+			Range(0, float64(opts.Max), float64(opts.Value))
+		if opts.Width > 0 {
+			e.Width(opts.Width)
+		}
+		return e.Draw(func(p *ui.Painter, r ui.Rect) {
+			p.Fill(ui.Rect{X: r.X, Y: r.Y, W: r.W * frac, H: r.H}, ink, h/2)
+			// The ticks are the meter's scale: the value's own position, in
+			// the window's text, and — while the fill has not reached it —
+			// the threshold, in the faint. A tick drawn in the fill's colour
+			// would be invisible the moment the fill covers it.
+			tw := max(1, h*0.12)
+			p.Fill(ui.Rect{X: r.X + r.W*frac - tw/2, Y: r.Y, W: tw, H: r.H},
+				k.Text, 0)
+			if opts.Threshold > 0 && opts.Value < opts.Threshold {
+				tx := r.X + r.W*clamp01(opts.Threshold/opts.Max)
+				p.Fill(ui.Rect{X: tx - tw/2, Y: r.Y, W: tw, H: r.H},
+					k.TextFaint, 0)
+			}
+		})
+	}
+
+	if !opts.ShowValue {
+		return bar()
+	}
+	return ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(u * 2).
+		Label(opts.Label).Children(func() {
+		ui.Box(c).Grow(1)
+		bar()
+		ui.Text(c, meterValue(opts.Value)+" / "+meterValue(opts.Max)).
+			TextColor(k.TextMuted).
+			FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
+	})
+}
+
+// meterValue renders a meter's number the way a person reads it off the dial:
+// 4.2, not 4.200000476837158, and 10, not 1e+01.
+func meterValue(v float32) string {
+	return strconv.FormatFloat(float64(v), 'g', 4, 64)
+}
+
 // progressInk is the colour a bar's filled part takes. core.Neutral takes the
 // accent rather than the ordinary text a neutral mark would take: a progress
 // bar is never passive content, and a bar in text grey reads as a disabled

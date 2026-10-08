@@ -495,7 +495,7 @@ func searchResultRow(c *ui.Context, res flatResult, chosen bool) *ui.Element {
 		})
 		if res.Text != "" {
 			// The line the match was found on, drawn with the query's own words
-			// marked in it — through the same splitting the viewer's rows use,
+			// marked in it — through the same mark the viewer's rows use,
 			// so that a search hit looks the same here as it does there.
 			marks := FindMatches(res.Text, strings.TrimSpace(res.Name))
 			if len(marks) == 0 {
@@ -503,8 +503,7 @@ func searchResultRow(c *ui.Context, res flatResult, chosen bool) *ui.Element {
 			}
 			ui.Box(c).Padding(0, u*2, 0, u*2).Radius(theme.SmallRadius).
 				Background(k.Surface).Grow(1).FillWidth().Children(func() {
-				codeTokens(c, []Token{{Text: res.Text, Kind: TokenPlain}},
-					theme.CaptionSize, ui.Color{}, marks)
+				CodeMatchSpans(c, res.Text, marks, theme.CaptionSize)
 			})
 		}
 	})

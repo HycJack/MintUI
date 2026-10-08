@@ -63,11 +63,9 @@ func layer(c *ui.Context, open *bool, modal bool, anchor ui.Align,
 		back.Children(func() {
 			if modal {
 				// The scrim is what makes a modal layer modal: it takes the
-				// clicks the page underneath would otherwise take. Its colour
-				// is a flat wash rather than a token, because there is only
-				// one right answer for "how much light does a page lose when
-				// something asks to be dealt with first".
-				back.Background(ui.RGBA(0, 0, 0, 0.4))
+				// clicks the page underneath would otherwise take, in the
+				// wash every dimming layer wears, from [dim].
+				back.Background(dim)
 			}
 			panel = ui.Box(c).Role(ui.RoleDialog)
 			// Asking whether the panel was clicked is also what marks it

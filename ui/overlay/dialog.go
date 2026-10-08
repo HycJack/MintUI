@@ -66,20 +66,20 @@ func Dialog(c *ui.Context, open *bool, opts DialogOptions) *ui.Element {
 	u := core.Density(c).Unit()
 
 	panel := layer(c, open, !opts.NonModal, ui.Center, func(_, p *ui.Element) {
-		Panel(c, p, PanelOptions{
-			Title:     opts.Title,
-			Subtitle:  opts.Subtitle,
-			Rule:      opts.Rule,
-			MaxWidth:  opts.MaxWidth,
-			TitleSize: theme.SheetSize,
-		}, func() {
-			if opts.Body != nil {
-				opts.Body()
-			}
-			if opts.Actions != nil {
-				ui.Row(c).FillWidth().Gap(u*2).Justify(ui.End).Margin(u*2.5, 0, 0, 0).
-					Children(opts.Actions)
-			}
+		DialogPanel(c, p, DialogPanelOptions{
+			Title:    opts.Title,
+			Subtitle: opts.Subtitle,
+			Rule:     opts.Rule,
+			MaxWidth: opts.MaxWidth,
+			Body: func() {
+				if opts.Body != nil {
+					opts.Body()
+				}
+				if opts.Actions != nil {
+					ui.Row(c).FillWidth().Gap(u*2).Justify(ui.End).Margin(u*2.5, 0, 0, 0).
+						Children(opts.Actions)
+				}
+			},
 		})
 	})
 	if panel == nil {
@@ -89,6 +89,61 @@ func Dialog(c *ui.Context, open *bool, opts DialogOptions) *ui.Element {
 		panel.Width(opts.Width)
 	}
 	return panel
+}
+
+// DialogPanelOptions configure a DialogPanel.
+type DialogPanelOptions struct {
+	// Title heads the panel, at the sheet size a dialog's title wears; empty
+	// draws a panel of body alone.
+	Title string
+	// Subtitle is the second line under the title.
+	Subtitle string
+	// Rule draws a hairline under the title, for a form under a heading.
+	Rule bool
+	// MaxWidth caps the panel; zero leaves it to the window.
+	MaxWidth float32
+	// Label names the panel; empty uses the title.
+	Label string
+	// Body is everything the panel carries under its title — the content and
+	// the actions together, in the caller's order — and is required: a
+	// dialog's surface with nothing in it is a shadow with no dialog under it.
+	Body func()
+}
+
+// DialogPanel is the box of a dialog: the background, the radius, the shadow,
+// the padding and the title bar, with the content and the footer passed in as
+// one body.
+//
+// It is what a Dialog wears, drawn apart from its backdrop and its *bool: a
+// caller who lays a panel over the window with [Overlay] and an element of
+// its own — a step of a flow the dialog's open flag does not own, a panel
+// the caller places rather than centres — hands its host to DialogPanel and
+// gets back the same surface a Dialog would have drawn. Dialog draws through
+// it, which is the reason a dialog and a hand-built panel cannot drift apart
+// on the questions of padding, radius and title size that are easy to get
+// subtly wrong.
+//
+//	core.Use(c, core.Settings{})
+//	DialogPanel(c, host, DialogPanelOptions{
+//	    Title: "Log callback",
+//	    Body: func() {
+//	        fields()
+//	        ui.Row(c).Justify(ui.End).Children(actions)
+//	    },
+//	})
+func DialogPanel(c *ui.Context, host *ui.Element, opts DialogPanelOptions) *ui.Element {
+	if opts.Body == nil {
+		panic("overlay: DialogPanel needs a Body; a dialog's surface with nothing inside it is " +
+			"a shadow with no dialog under it")
+	}
+	return Panel(c, host, PanelOptions{
+		Title:     opts.Title,
+		Subtitle:  opts.Subtitle,
+		Rule:      opts.Rule,
+		MaxWidth:  opts.MaxWidth,
+		Label:     opts.Label,
+		TitleSize: theme.SheetSize,
+	}, opts.Body)
 }
 
 // AlertDialogOptions configure an AlertDialog.

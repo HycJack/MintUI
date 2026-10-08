@@ -178,9 +178,9 @@ func blockInk(p *ui.Painter, r ui.Rect, kinds []TokenKind, k theme.Tokens) {
 	}
 }
 
-// ── HexView ─────────────────────────────────────────────────────────────────
+// ── HexViewer ─────────────────────────────────────────────────────────────────
 
-// HexOptions configure a HexView.
+// HexOptions configure a HexViewer.
 type HexOptions struct {
 	// Name is what the view is called — a path, a device. It is required.
 	Name string
@@ -210,7 +210,7 @@ type HexOptions struct {
 	ShowAscii *bool
 }
 
-// HexResult carries a HexView and what was pressed in it.
+// HexResult carries a HexViewer and what was pressed in it.
 type HexResult struct {
 	// Element is the view.
 	Element *ui.Element
@@ -223,19 +223,19 @@ type HexResult struct {
 // that wants the byte wants the byte.
 func (r HexResult) Selected() int { return r.selected }
 
-// HexView is a file as its bytes: the offset, sixteen bytes, and the
+// HexViewer is a file as its bytes: the offset, sixteen bytes, and the
 // characters they spell.
 //
 // It is drawn rather than assembled out of boxes because a row is four
 // separate alignments — the offset, the bytes, the characters — and three
 // boxes per row is three times the elements for a thing that is one paint.
-func HexView(c *ui.Context, opts HexOptions) HexResult {
+func HexViewer(c *ui.Context, opts HexOptions) HexResult {
 	if opts.Name == "" {
-		panic("code: HexView needs a Name; a column of bytes with nothing saying what they are " +
+		panic("code: HexViewer needs a Name; a column of bytes with nothing saying what they are " +
 			"cannot be read out")
 	}
 	if opts.Height <= 0 {
-		panic("code: HexView needs a Height; without one it draws every byte of the file")
+		panic("code: HexViewer needs a Height; without one it draws every byte of the file")
 	}
 	perRow := opts.BytesPerRow
 	if perRow <= 0 {
@@ -348,7 +348,7 @@ func hexAscii(b []byte) string {
 
 func toa(n int) string { return itoa(n) }
 
-// ── LogView ─────────────────────────────────────────────────────────────────
+// ── LogViewer ─────────────────────────────────────────────────────────────────
 
 // LogLevel is how bad a line of output is.
 type LogLevel int
@@ -418,7 +418,7 @@ type ExtraBadge struct {
 	Severity core.Severity
 }
 
-// LogOptions configure a LogView.
+// LogOptions configure a LogViewer.
 type LogOptions struct {
 	// Name is what the log is called, and is required.
 	Name string
@@ -441,12 +441,12 @@ type LogOptions struct {
 	SelectedLine int
 	// Extra is one more badge for the head, for a caller that has something
 	// of its own to say. OutputPanel is the reason this exists: it is a
-	// LogView with a "Running" on it, and wrapping a LogView in a second
+	// LogViewer with a "Running" on it, and wrapping a LogViewer in a second
 	// panel to say so puts a border inside a border.
 	Extra *ExtraBadge
 }
 
-// LogResult carries a LogView and what was pressed in it.
+// LogResult carries a LogViewer and what was pressed in it.
 type LogResult struct {
 	// Element is the log.
 	Element *ui.Element
@@ -466,7 +466,7 @@ func (r LogResult) Visible() int { return r.visible }
 // because a caller selecting from a log selects from what it can see.
 func (r LogResult) Pressed() int { return r.pressed }
 
-// LogView is a program's output, newest at the bottom, in the order it came.
+// LogViewer is a program's output, newest at the bottom, in the order it came.
 //
 // It filters and it scrolls, and it does not re-order: a log read top to
 // bottom is a log read in the order things happened, and anything that puts
@@ -475,13 +475,13 @@ func (r LogResult) Pressed() int { return r.pressed }
 //
 // The rows are built in a ui.List, so a log of ten thousand lines draws the
 // hundred it has room for.
-func LogView(c *ui.Context, opts LogOptions) LogResult {
+func LogViewer(c *ui.Context, opts LogOptions) LogResult {
 	if opts.Name == "" {
-		panic("code: LogView needs a Name; a column of output that says nothing about where it " +
+		panic("code: LogViewer needs a Name; a column of output that says nothing about where it " +
 			"came from is not a log")
 	}
 	if opts.Height <= 0 {
-		panic("code: LogView needs a Height; without one it draws every line of output")
+		panic("code: LogViewer needs a Height; without one it draws every line of output")
 	}
 	showTime, showLevel, showSource := true, true, false
 	if opts.ShowTime != nil {
@@ -593,51 +593,9 @@ func LogViewerName(c *ui.Context, name string) *ui.Element {
 
 // ansiRow is one log line, drawn as the ANSI runs the program printed.
 func ansiRow(c *ui.Context, text string, fg, band ui.Color) {
-	k := core.Tokens(c)
-	spans := ParseAnsi(text)
-	if len(spans) == 0 {
-		return
-	}
-	fontSize := core.FontSize(c, theme.RowSize)
-	row := ui.Row(c).AlignItems(ui.Center).Grow(1).Shrink(1)
-	row.Children(func() {
-		for _, s := range spans {
-			if s.Text == "" {
-				continue
-			}
-			s := s
-			// Whitespace at the end of a run draws at zero width in its own
-			// Text — layout trims it — so it travels as a measured box and
-			// the columns after it stay where the program printed them.
-			body, ws := splitTrailingWS(s.Text)
-			if body != "" {
-				row.Children(func() {
-					e := ui.Text(c, body).Font(MonoStack).SingleLine().Shrink(0).
-						FontSize(core.FontSize(c, theme.RowSize)).
-						TextColor(ansiInk(k, s, fg, band))
-					if s.Bold {
-						e = e.Bold()
-					}
-					if s.Italic {
-						e = e.Italic()
-					}
-					if s.Underline {
-						e = e.Underline()
-					}
-					if s.Dim {
-						e = e.Opacity(0.6)
-					}
-					if bg := ansiBackground(k, s); bg.A != 0 {
-						e = e.TextBackground(bg)
-					}
-				})
-			}
-			if ws != "" {
-				sb := spaceBox(c, ws, fontSize)
-				row.Children(sb)
-			}
-		}
-	})
+	// The shared ANSI part, grown to take the row's room: a line of output
+	// fills its row, and a row that shrank would let the next column in.
+	CodeAnsiSpans(c, text, theme.RowSize, fg, band).Grow(1).Shrink(1)
 }
 
 // ansiInk is the colour one ANSI run is drawn in, from the sixteen a terminal

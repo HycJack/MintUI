@@ -19,7 +19,7 @@ type OutputOptions struct {
 	// Name is what the panel is called — "build", "test", "deploy" — and is
 	// required.
 	Name string
-	// Lines are the lines of output, as LogView takes them, so that a caller
+	// Lines are the lines of output, as LogViewer takes them, so that a caller
 	// with a build's output and a caller with a test run's are drawn by the
 	// same function and cannot come out looking like two different things.
 	Lines []LogLine
@@ -67,8 +67,8 @@ func (r OutputResult) Lines() int { return r.lines }
 // OutputPanel is the output of a piece of work — a build, a test run, a
 // deploy — with its level column and its filter.
 //
-// It is LogView with a head, and it is written as its own component rather
-// than as a LogView with options because the two answer different questions:
+// It is LogViewer with a head, and it is written as its own component rather
+// than as a LogViewer with options because the two answer different questions:
 // a log is something to read and an output is something to watch, and the head
 // that says whether the work is still going belongs to the second and not to
 // the first.
@@ -91,8 +91,8 @@ func OutputPanel(c *ui.Context, opts OutputOptions) OutputResult {
 
 	var r OutputResult
 
-	// OutputPanel is a LogView with a word on its head, not a panel around
-	// one: LogView already draws a box with a border and a header, and
+	// OutputPanel is a LogViewer with a word on its head, not a panel around
+	// one: LogViewer already draws a box with a border and a header, and
 	// wrapping that in a second box puts a border inside a border and two
 	// headers where one belongs. So the "Running" badge is handed down to
 	// the log's own header instead.
@@ -103,7 +103,7 @@ func OutputPanel(c *ui.Context, opts OutputOptions) OutputResult {
 			Severity: core.Accent,
 		}
 	}
-	log := LogView(c, LogOptions{
+	log := LogViewer(c, LogOptions{
 		Name: opts.Name, Lines: opts.Lines, Height: opts.Height, Width: opts.Width,
 		Filter: opts.Filter, State: opts.State, Scroll: opts.Scroll,
 		ShowLevel: boolOf(detail), Follow: boolOf(follow),

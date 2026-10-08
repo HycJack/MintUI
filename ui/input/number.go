@@ -352,21 +352,63 @@ func numeric(c *ui.Context, value *float64, o numericOptions) (*ui.Element, nume
 // and a field that took two stops of its own would make Tab a worse way
 // through a form than the arrows are.
 func steppers(c *ui.Context, value *float64, min, max *float64) (less, more *ui.Element) {
+	// A stepper at its bound is not merely quiet: pressing it must do
+	// nothing at all, or a number can be walked off the end of its own range
+	// one press at a time.
+	return numberStepButton(c, glyphLess, core.Msg(c, "input.decrease", "Decrease"),
+			min != nil && *value <= *min),
+		numberStepButton(c, glyphMore, core.Msg(c, "input.increase", "Increase"),
+			max != nil && *value >= *max)
+}
+
+// numberStepButton is one of the two buttons a numeric field steps with:
+// the square at the field's trailing edge, the glyph a person reaches for
+// before the arrows, and the pointer cursor that says it is meant to be
+// pressed. NumberInput's pair of steppers and a stand-alone NumberInputButton
+// are both this drawing.
+func numberStepButton(c *ui.Context, glyph *ui.SVG, name string, disabled bool) *ui.Element {
 	k, u := core.Tokens(c), core.Density(c).Unit()
 	side := u * 6.5
-	button := func(glyph *ui.SVG, name string, bound *float64, off bool) *ui.Element {
-		return ui.Box(c).Size(side, side).Shrink(0).Role(ui.RoleButton).
-			Label(name).Tooltip(name).Cursor(ui.CursorPointer).
-			// A stepper at its bound is not merely quiet: pressing it must
-			// do nothing at all, or a number can be walked off the end of
-			// its own range one press at a time.
-			Disabled(bound != nil && ((off && *value <= *bound) || (!off && *value >= *bound))).
-			Children(func() {
-				ui.Icon(c, glyph).TextColor(k.TextMuted).Size(u*3.5, u*3.5)
-			})
+	return ui.Box(c).Size(side, side).Shrink(0).Role(ui.RoleButton).
+		Label(name).Tooltip(name).Cursor(ui.CursorPointer).
+		Disabled(disabled).
+		Children(func() {
+			ui.Icon(c, glyph).TextColor(k.TextMuted).Size(u*3.5, u*3.5)
+		})
+}
+
+// NumberInputButtonOptions configure a NumberInputButton.
+type NumberInputButtonOptions struct {
+	// Glyph is the mark on the button. Nil takes the plus — glyphMore is the
+	// up button and glyphLess the down one — which is the button a caller is
+	// most likely to be reaching for on its own.
+	Glyph *ui.SVG
+	// Label names the button for assistive technology, and is required: a
+	// stepper with no name is a box a reader meets and cannot say out loud.
+	Label string
+	// Disabled greys the button out: it takes neither clicks nor focus.
+	Disabled bool
+}
+
+// NumberInputButton is one of a number field's two stepper buttons, taken
+// out of the NumberInput that owns the pair, for a caller laying the stepper
+// out somewhere the field does not put it — beside a read-only figure, in a
+// toolbar of its own.
+//
+// It is the button and not the stepping: it reports its press as Clicked on
+// the element it returns, and moving the number the press meant — by how
+// much, against which bounds — is the caller's, because the button does not
+// own the value. NumberInput's own steppers move the value because the field
+// is the only thing that knows its step and its bounds.
+func NumberInputButton(c *ui.Context, opts NumberInputButtonOptions) *ui.Element {
+	if opts.Label == "" {
+		panic("input: NumberInputButton needs a Label; a stepper with no name is a box that says nothing")
 	}
-	return button(glyphLess, core.Msg(c, "input.decrease", "Decrease"), min, true),
-		button(glyphMore, core.Msg(c, "input.increase", "Increase"), max, false)
+	glyph := opts.Glyph
+	if glyph == nil {
+		glyph = glyphMore
+	}
+	return numberStepButton(c, glyph, opts.Label, opts.Disabled)
 }
 
 func clampTo(v float64, min, max *float64) float64 {

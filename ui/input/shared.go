@@ -37,6 +37,11 @@ const (
 	tickMark
 	tickOn
 	dashMark
+	// checkGlyph is the tick alone, without the box around it, for a row
+	// that marks its chosen state with a check rather than with a filled
+	// box — a single-choice list's selected row, which a box in front of it
+	// would read as a second control.
+	checkGlyph
 )
 
 // checkChoices is every Choice's value in the order they were given, which is
@@ -140,6 +145,11 @@ func markFace(c *ui.Context, m mark, side float32) *ui.Element {
 	case tickMark:
 		box.Background(k.Background).
 			BorderWidth(theme.BorderWidth).BorderColor(k.Border.Mix(k.Text, 0.25))
+	case checkGlyph:
+		// The tick stands alone, in the window's accent: the one colour that
+		// says "this is the one" without a surface to stand on.
+		box.DrawOver(func(p *ui.Painter, r ui.Rect) { paintTick(p, r, k.Accent) })
+		return box
 	default:
 		return box
 	}
@@ -149,16 +159,23 @@ func markFace(c *ui.Context, m mark, side float32) *ui.Element {
 	box.DrawOver(func(p *ui.Painter, r ui.Rect) {
 		switch m {
 		case tickOn:
-			var path ui.Path
-			path.MoveTo(r.X+r.W*0.24, r.Y+r.H*0.52).
-				LineTo(r.X+r.W*0.44, r.Y+r.H*0.72).
-				LineTo(r.X+r.W*0.78, r.Y+r.H*0.3)
-			p.StrokePath(&path, 1.5, ink)
+			paintTick(p, r, ink)
 		case dashMark:
 			p.Line(r.X+r.W*0.22, r.Y+r.H/2, r.X+r.W*0.78, r.Y+r.H/2, 1.5, ink)
 		}
 	})
 	return box
+}
+
+// paintTick is the tick's own path, which a mark box and a stand-alone
+// SelectCheck both need: the two strokes a check is, drawn at whatever size
+// its box gives it.
+func paintTick(p *ui.Painter, r ui.Rect, ink ui.Color) {
+	var path ui.Path
+	path.MoveTo(r.X+r.W*0.24, r.Y+r.H*0.52).
+		LineTo(r.X+r.W*0.44, r.Y+r.H*0.72).
+		LineTo(r.X+r.W*0.78, r.Y+r.H*0.3)
+	p.StrokePath(&path, 1.5, ink)
 }
 
 // chevron draws the arrow of a control that opens something below it. It is
@@ -209,26 +226,48 @@ type openKey struct{}
 // what a dropdown's trigger says — a count, a node's name, a whole path — is
 // the caller's to say and not the library's to guess.
 func dropdownTrigger(c *ui.Context, name, show, placeholder string) (*ui.Element, *bool) {
-	k, u := core.Tokens(c), core.Density(c).Unit()
-	trigger := ui.ButtonBase(c).Height(core.ControlHeight(c)).Radius(theme.ControlRadius).
-		Padding(0, u*2.5).Background(k.Background).TextColor(k.Text).
-		BorderWidth(theme.BorderWidth).BorderColor(k.Border).
-		FillWidth().Justify(ui.SpaceBetween).Label(name).Tooltip(name)
+	trigger := ui.ButtonBase(c)
+	selectTriggerFace(c, trigger, false)
+	trigger.Label(name).Tooltip(name)
 	open := ui.Local(trigger, openKey{}, func() bool { return false })
 	if trigger.Clicked() {
 		*open = !*open
 	}
-	trigger.Children(func() {
-		label, fg := show, k.Text
-		if label == "" {
-			// Nothing chosen yet: the trigger says so in the faint ink, in
-			// the caller's own words, so it is not mistaken for a value.
-			label, fg = placeholder, k.TextFaint
-		}
-		ui.Text(c, label).SingleLine().TextColor(fg).FontSize(core.FontSize(c, theme.BodySize))
-		chevron(c)
-	})
+	trigger.Children(func() { selectTriggerContent(c, show, placeholder, false) })
 	return trigger, open
+}
+
+// selectTriggerFace gives an element the look of a dropdown's closed-state
+// trigger: the control's height and radius, the border, the room the arrow
+// takes. It is the same face Select's trigger wears, drawn through
+// ui.SelectBase, so the two cannot drift apart.
+func selectTriggerFace(c *ui.Context, e *ui.Element, disabled bool) {
+	k, u := core.Tokens(c), core.Density(c).Unit()
+	e.Height(core.ControlHeight(c)).Radius(theme.ControlRadius).
+		Padding(0, u*2.5).Background(k.Background).TextColor(k.Text).
+		BorderWidth(theme.BorderWidth).BorderColor(k.Border).
+		FillWidth().Justify(ui.SpaceBetween)
+	if disabled {
+		e.Disabled(true)
+	}
+}
+
+// selectTriggerContent is what a dropdown's trigger shows: the current
+// choice's words, or the placeholder in faint ink while there is no choice,
+// and the arrow that says what pressing it does.
+func selectTriggerContent(c *ui.Context, show, placeholder string, disabled bool) {
+	k := core.Tokens(c)
+	label, fg := show, k.Text
+	if label == "" {
+		// Nothing chosen yet: the trigger says so in the faint ink, in
+		// the caller's own words, so it is not mistaken for a value.
+		label, fg = placeholder, k.TextFaint
+	}
+	if disabled {
+		fg = k.TextFaint
+	}
+	ui.Text(c, label).SingleLine().TextColor(fg).FontSize(core.FontSize(c, theme.BodySize))
+	chevron(c)
 }
 
 // optionFace is what an option row in a panel is showing.
@@ -246,6 +285,10 @@ type optionFace struct {
 	// inventing a second highlight for it would be one that follows the
 	// pointer and not the keyboard.
 	Chosen bool
+	// Note is a second, faint word at the row's trailing edge: a shortcut
+	// hint, a count, a date. It is drawn only when present, so a row with
+	// none is exactly what it was.
+	Note string
 }
 
 // optionRow is one row of a panel of options, taking a press and reporting
@@ -275,6 +318,10 @@ func optionRow(c *ui.Context, label string, f optionFace) *ui.Element {
 			markFace(c, f.Mark, u*3.75)
 		}
 		ui.Text(c, label).SingleLine().FontSize(core.FontSize(c, theme.BodySize))
+		if f.Note != "" {
+			ui.Text(c, f.Note).SingleLine().TextColor(k.TextFaint).
+				FontSize(core.FontSize(c, theme.MetaSize))
+		}
 	})
 	return row
 }

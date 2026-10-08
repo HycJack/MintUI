@@ -118,6 +118,72 @@ func singleRail(c *ui.Context, value *float64, opts SliderOptions) *ui.Element {
 	return rail.Label(opts.Label).Disabled(opts.Disabled)
 }
 
+// SliderControlOptions configure a SliderControl.
+type SliderControlOptions struct {
+	// Min is the lowest value the slider can be set to and Max the highest,
+	// as a Slider's are.
+	Min, Max float64
+	// Step makes the values Min and the multiples of Step from it, with a
+	// tick mark at each. Zero is every value in between.
+	Step float64
+	// Format is how the value is written beside the slider, as "%.0f%%".
+	// Empty writes the number on its own.
+	Format string
+	// Caption is the words before the value, beside the rail: "Volume",
+	// "Brightness". Empty shows the number alone.
+	Caption string
+	// Label names the slider for assistive technology, and is required, as
+	// Slider's is.
+	Label string
+	// Disabled greys the control out: it takes neither presses nor focus.
+	Disabled bool
+}
+
+// SliderControl is a slider with its value said out loud next to it, and an
+// optional caption beside the number.
+//
+// It is the answer to the question a bare Slider cannot answer on its own: a
+// rail and a thumb are a way to set a number, not a place to read it, and a
+// caller that wants the reading without keeping a second field in step with
+// the thumb asks for the control rather than for the rail. The value still
+// goes to the caller's *float64, so the reading is a view of the value and
+// not a copy of it — it moves as the thumb moves because it is the same
+// number.
+//
+// The difference from Slider with ShowValue is a question of what the
+// control is: Slider's number is an option on a control whose one job is
+// setting, off by default because a form that has its own field for the
+// number would say it twice. SliderControl is the control for the case where
+// the reading is the point — a toolbar, a status line, a setting read as
+// often as it is set — so the number is always there and a caption may sit
+// beside it.
+func SliderControl(c *ui.Context, value *float64, opts SliderControlOptions) *ui.Element {
+	if value == nil {
+		panic("input: SliderControl needs a value to point at")
+	}
+	checkBounds(opts.Min, opts.Max, opts.Step, "SliderControl")
+	if opts.Label == "" {
+		panic("input: SliderControl needs options.Label; a rail and a thumb say nothing about what they measure")
+	}
+	*value = clampStep(*value, opts.Min, opts.Max, opts.Step)
+	k, u := core.Tokens(c), core.Density(c).Unit()
+
+	row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(u * 2)
+	row.Children(func() {
+		singleRail(c, value, SliderOptions{
+			Min: opts.Min, Max: opts.Max, Step: opts.Step,
+			Label: opts.Label, Disabled: opts.Disabled,
+		}).Grow(1)
+		if opts.Caption != "" {
+			ui.Text(c, opts.Caption).TextColor(k.TextMuted).
+				FontSize(core.FontSize(c, theme.RowSize)).SingleLine()
+		}
+		ui.Text(c, writeValue(opts.Format, *value)).TextColor(k.TextMuted).
+			FontSize(core.FontSize(c, theme.StatSize)).SingleLine()
+	})
+	return row
+}
+
 // RangeSliderOptions configure a RangeSlider.
 type RangeSliderOptions struct {
 	// Min is the lowest value the range can reach and Max the highest.

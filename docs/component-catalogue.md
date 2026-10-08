@@ -65,7 +65,7 @@
 - [x] `Meter` _新增_
 - [x] `PresenceDot` _新增_
 
-## ui/input — 人操作的控件　50/61
+## ui/input — 人操作的控件　61/61
 
 - [x] `Banner`
 - [x] `BulkActionBar`
@@ -117,7 +117,7 @@
 - [x] `Segmented` _新增_
 - [x] `Select` _新增_
 - [x] `ToggleGroup` _新增_
-- [ ] `DockPanel`, `MultiSelectCheck`, `NumberInputButton`, `SelectCheck`, `SelectField`, `SelectNote`, `SelectPanel`, `SelectRow`, `SliderControl`, `TextInputEditor`, `Toggle`
+- [x] `DockPanel`, `MultiSelectCheck`, `NumberInputButton`, `SelectCheck`, `SelectField`, `SelectNote`, `SelectPanel`, `SelectRow`, `SliderControl`, `TextInputEditor`, `Toggle`
 
 ## ui/navigation — 在窗口里移动　15/17
 
@@ -152,7 +152,7 @@
 - [x] `StatLine` _新增_
 - [ ] `DataError`, `DataPlaceholder`, `DataSelectTheme`, `Statistic`
 
-## ui/overlay — 浮层　11/17
+## ui/overlay — 浮层　17/17
 
 - [x] `AlertDialog`
 - [x] `ContextMenu`
@@ -165,9 +165,9 @@
 - [x] `SplitButton`
 - [x] `Tooltip`
 - [x] `Panel` _新增_
-- [ ] `DialogPanel`, `Overlay`, `OverlayAnchored`, `PopoverRoom`, `PopoverWide`, `PopupMenuOpen`
+- [x] `DialogPanel`, `Overlay`, `OverlayAnchored`, `PopoverRoom`, `PopoverWide`, `PopupMenuOpen`
 
-## ui/feedback — 说而不是展示　25/36
+## ui/feedback — 说而不是展示　36/36
 
 - [x] `ActivityFeed`
 - [x] `Alert`
@@ -194,7 +194,7 @@
 - [x] `Empty` _新增_
 - [x] `NewStagger` _新增_
 - [x] `Toast` _新增_
-- [ ] `CostBreakdown`, `DismissToast`, `EmptyState`, `EvalResultTable`, `Meter`, `ShowToast`, `Stagger`, `Toaster`, `TokenUsageChart`, `ToolRegistryPanel`, `TraceViewer`
+- [x] `CostBreakdown`, `DismissToast`, `EmptyState`, `EvalResultTable`, `Meter`, `ShowToast`, `Stagger`, `Toaster`, `TokenUsageChart`, `ToolRegistryPanel`, `TraceViewer`
 
 ## ui/datetime — 日期与时间　31/39
 
@@ -231,7 +231,7 @@
 - [x] `Grid` _新增_
 - [ ] `CalendarFirstWeekday`, `CountdownText`, `DurationText`, `RecurrenceSummary`, `RelativeTimeText`, `ReminderText`, `WeekViewTitle`, `YearView`
 
-## ui/chat — 对话　58/65
+## ui/chat — 对话　65/65
 
 - [x] `ArtifactCard`
 - [x] `AttachmentChip`
@@ -291,15 +291,17 @@
 - [x] `ConversationContainer` _新增_
 - [x] `EmptyState` _新增_
 - [x] `MentionMenu` _新增_
-- [ ] `ChatContainer`, `ChatEmptyState`, `ContextMentionMenu`, `LinkPreviewCard`, `ProjectKnowledgePanel`, `SharedConversationView`, `WelcomeScreen`
+- [x] `ChatContainer`, `ChatEmptyState`, `ContextMentionMenu`, `LinkPreviewCard`, `ProjectKnowledgePanel`, `SharedConversationView`, `WelcomeScreen`
 
-## ui/code — 代码与终端　32/37
+## ui/code — 代码与终端　34/35
 
 - [x] `BreakpointList`
 - [x] `CallStack`
+- [x] `CodeAnsiSpans`
 - [x] `CodeBadge`
 - [x] `CodeCaption`
 - [x] `CodeHeader`
+- [x] `CodeMatchSpans`
 - [x] `CodeMono`
 - [x] `CodePanel`
 - [x] `CodeSelectMark`
@@ -309,6 +311,8 @@
 - [x] `DebugToolbar`
 - [x] `FindWidget`
 - [x] `Flamegraph`
+- [x] `HexViewer`
+- [x] `LogViewer`
 - [x] `LogViewerName`
 - [x] `Minimap`
 - [x] `OutputPanel`
@@ -323,11 +327,9 @@
 - [x] `CodeMatchTokens` _新增_
 - [x] `CodeMetrics` _新增_
 - [x] `Diff` _新增_
-- [x] `HexView` _新增_
 - [x] `LineHeight` _新增_
-- [x] `LogView` _新增_
 - [x] `TokenInk` _新增_
-- [ ] `CodeAnsiSpans`, `CodeMatchSpans`, `CodeRows`, `HexViewer`, `LogViewer`
+- [ ] `CodeRows`
 
 ## ui/git — 版本控制　20/20
 
@@ -439,9 +441,9 @@
 
 - [ ] `AudioPlayer`, `AudioSpectrum`, `AudioWaveform`, `CameraPreview`, `DeviceSelector`, `ImageAnnotator`, `ImageCompare`, `ImageCropper`, `ImageThumbnail`, `Lightbox`, `MediaControls`, `MediaToggleAction`, `MicLevelMeter`, `PlaybackSpeedControl`, `Playlist`, `ScreenRecorderControls`, `SubtitleEditor`, `VideoPlayer`, `VideoScrubber`, `VideoThumbnailStrip`, `VolumeControl`
 
-## ui/messaging — 消息与邮件　0/20
+## ui/messaging — 消息与邮件　20/20
 
-- [ ] `CallControls`, `ChannelList`, `ChatMessage`, `EmojiPicker`, `IncomingCallDialog`, `MailComposer`, `MailList`, `MailReader`, `MemberList`, `OnlineStatus`, `PinnedMessages`, `QuotedText`, `ReadReceipt`, `RecipientInput`, `SnoozePicker`, `StatusSetter`, `ThreadPanel`, `UnreadDivider`, `UserProfileCard`, `VideoCallGrid`
+- [x] `CallControls`, `ChannelList`, `ChatMessage`, `EmojiPicker`, `IncomingCallDialog`, `MailComposer`, `MailList`, `MailReader`, `MemberList`, `OnlineStatus`, `PinnedMessages`, `QuotedText`, `ReadReceipt`, `RecipientInput`, `SnoozePicker`, `StatusSetter`, `ThreadPanel`, `UnreadDivider`, `UserProfileCard`, `VideoCallGrid`
 
 ## ui/devtools — 调试面板　0/17
 
@@ -455,8 +457,8 @@
 
 - [ ] `AccentColorPicker`, `AccountSwitcher`, `ApiKeyManager`, `Coachmark`, `FeedbackWidget`, `KeyboardShortcutsList`, `LoginForm`, `OAuthButtons`, `OnboardingWizard`, `ProfileEditor`, `SessionList`, `SettingsLayout`, `SettingsRow`, `SettingsSearch`, `SettingsSection`, `ShortcutRecorder`, `ThemeSelector`, `TwoFactorInput`, `UsageQuota`, `UserMenu`, `WhatsNewDialog`, `WorkspaceSwitcher`
 
-## ui/agent — Agent 运行过程　0/26
+## ui/agent — Agent 运行过程　26/26
 
-- [ ] `AgentCaption`, `AgentCard`, `AgentCode`, `AgentPlan`, `AgentProgress`, `AgentRows`, `AgentStatus`, `AgentStepList`, `AgentToggle`, `AgentWellRows`, `ArtifactPanel`, `ArtifactVersionSwitcher`, `CheckpointList`, `CommandExecutionCard`, `FileChangeCard`, `HumanInputRequest`, `MCPServerList`, `MemoryPanel`, `MultiFileDiffReview`, `PermissionPrompt`, `SandboxStatus`, `ScreenshotStream`, `SubAgentTree`, `ToolApprovalDialog`, `ToolCallCard`, `ToolCallGroup`
+- [x] `AgentCaption`, `AgentCard`, `AgentCode`, `AgentPlan`, `AgentProgress`, `AgentRows`, `AgentStatus`, `AgentStepList`, `AgentToggle`, `AgentWellRows`, `ArtifactPanel`, `ArtifactVersionSwitcher`, `CheckpointList`, `CommandExecutionCard`, `FileChangeCard`, `HumanInputRequest`, `MCPServerList`, `MemoryPanel`, `MultiFileDiffReview`, `PermissionPrompt`, `SandboxStatus`, `ScreenshotStream`, `SubAgentTree`, `ToolApprovalDialog`, `ToolCallCard`, `ToolCallGroup`
 
-合计 **368/618 = 60%**。
+合计 **451/618 = 73%**。

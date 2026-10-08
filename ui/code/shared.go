@@ -173,7 +173,7 @@ func codeRow(c *ui.Context, o CodeRowsOptions, number int, content func()) *ui.E
 		}
 		// Row, not Box: a Box here is a Column, so everything a caller
 		// puts in a line lands under each other instead of across. A viewer
-		// draws one run of tokens and never notices. LogView draws a time, a
+		// draws one run of tokens and never notices. LogViewer draws a time, a
 		// level, a source and a message, and with a Column under it every
 		// row is four rows tall and overflows into the next one — four
 		// columns of text, each stepping down one line, which reads as a
@@ -559,6 +559,72 @@ func relLum(c ui.Color) float32 {
 // same wherever it is shown.
 func CodeMatchTokens(c *ui.Context, tokens []Token, marks []MatchSpans, size float32) *ui.Element {
 	return codeTokens(c, tokens, size, ui.Color{}, marks)
+}
+
+// CodeMatchSpans draws one plain line with a search's matches marked behind
+// them, for text the caller does not have tokenised: a raw log line, a command,
+// a path. It is CodeMatchTokens with a line the scanner was never run on,
+// which is how a hit looks the same in a highlighted file and in the output a
+// program printed — one mark, not two that can drift.
+func CodeMatchSpans(c *ui.Context, line string, marks []MatchSpans, size float32) *ui.Element {
+	return CodeMatchTokens(c, []Token{{Text: line, Kind: TokenPlain}}, marks, size)
+}
+
+// CodeAnsiSpans draws one line of terminal output the way its escape
+// sequences ask for it: each run in the colour and the weight the program
+// asked for, in the monospace the package draws code in, with the sequences
+// themselves gone.
+//
+// It is the shared part of a line that is coloured rather than scanned: a
+// log's lines and a terminal's output both end up here, and a second set of
+// ANSI-to-ink decisions is the thing that would drift. The line is taken raw
+// so that a caller does not have to remember to ParseAnsi first, and the
+// parsing stays one call with one place to be wrong in.
+//
+// base is what a run that asked for no colour is drawn in, and band the ground
+// the line sits on; zero of either takes the plain reading — ordinary text on
+// nothing.
+func CodeAnsiSpans(c *ui.Context, text string, size float32, base, band ui.Color) *ui.Element {
+	k := core.Tokens(c)
+	row := ui.Row(c).AlignItems(ui.Center).Gap(0).Shrink(0)
+	fontSize := core.FontSize(c, size)
+	for _, s := range ParseAnsi(text) {
+		if s.Text == "" {
+			continue
+		}
+		s := s
+		// Whitespace at the end of a run draws at zero width in its own
+		// Text — layout trims it — so it travels as a measured box and
+		// the columns after it stay where the program printed them.
+		body, ws := splitTrailingWS(s.Text)
+		if body != "" {
+			row.Children(func() {
+				e := ui.Text(c, body).Font(MonoStack).SingleLine().Shrink(0).
+					FontSize(core.FontSize(c, size)).
+					TextColor(ansiInk(k, s, base, band))
+				if s.Bold {
+					e = e.Bold()
+				}
+				if s.Italic {
+					e = e.Italic()
+				}
+				if s.Underline {
+					e = e.Underline()
+				}
+				if s.Dim {
+					e = e.Opacity(0.6)
+				}
+				if bg := ansiBackground(k, s); bg.A != 0 {
+					e = e.TextBackground(bg)
+				}
+			})
+		}
+		if ws != "" {
+			sb := spaceBox(c, ws, fontSize)
+			row.Children(sb)
+		}
+	}
+	return row
 }
 
 // sortSlice is a sort by a comparison on a local type, because this file has

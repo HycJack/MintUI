@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/HycJack/MintUI/ui/core"
+	"github.com/HycJack/MintUI/ui/theme"
 )
 
 // The text controls: one line, many lines, hidden, searched, masked, and the
@@ -135,6 +136,93 @@ func TextArea(c *ui.Context, value *string, opts TextAreaOptions) *ui.Element {
 		}
 		return dressInput(in, opts.Error, opts.ReadOnly)
 	})
+}
+
+// TextInputEditorOptions configure a TextInputEditor.
+type TextInputEditorOptions struct {
+	// Label names the field, and is required, as for a TextArea.
+	Label string
+	// Placeholder shows while the value is empty.
+	Placeholder string
+	// Lines is how many lines the editor shows. Six is the usual answer for
+	// a snippet, and anything below two is a TextInput wearing a hat.
+	Lines int
+	// MaxLines caps how many lines the value may hold; zero is no cap. A
+	// line typed over the cap is dropped, which is the only answer a cap
+	// that quietly did nothing is not.
+	MaxLines int
+	// Disabled and ReadOnly do what they do on a TextInput.
+	Disabled bool
+	ReadOnly bool
+	// Width is the field's own width; zero fills the row it is in.
+	Width float32
+}
+
+// TextInputEditor is a multi-line editor for code and fragments: the text in
+// the system's monospace face, a line count under the box, and an optional
+// cap on how many lines it may hold.
+//
+// It is the answer to the question a TextArea is not meant to take. A
+// TextArea is prose that happens to be many lines — a note, a description —
+// and it sets its type, its line height and its height from the prose face,
+// which says nothing about code. A code field wants the monospace face,
+// because that is the one face in which a snippet still reads as code, and a
+// line count, because the length of a fragment is a fact about it that the
+// caller wants said. Where the value is a note, use a TextArea; where it is
+// a snippet, a configuration, anything the reader will set off from the
+// prose around it, use this.
+//
+// The value is the caller's string, typed into the moment it is typed, as a
+// TextArea's is: the field is a view of the value, and the line count under
+// it counts the value, so it moves as the text moves.
+func TextInputEditor(c *ui.Context, value *string, opts TextInputEditorOptions) *ui.Element {
+	if value == nil {
+		panic("input: TextInputEditor needs a value to point at; it keeps no value of its own")
+	}
+	if opts.Label == "" {
+		panic("input: TextInputEditor needs a Label, or nothing can name the field")
+	}
+	if opts.MaxLines < 0 {
+		panic("input: TextInputEditor's MaxLines cannot be negative")
+	}
+	k, u := core.Tokens(c), core.Density(c).Unit()
+
+	lines := opts.Lines
+	if lines < 1 {
+		lines = 6
+	}
+	s := fieldSkin{
+		label: opts.Label, lines: lines, mono: true,
+		disabled: opts.Disabled, readOnly: opts.ReadOnly, width: opts.Width,
+	}
+
+	col := ui.Column(c).FillWidth().Gap(u * 0.5)
+	col.Children(func() {
+		areaWell(c, s, func(_ *ui.Element) *ui.Element {
+			in := ui.TextAreaBase(c, value).Label(opts.Label).FillWidth().
+				Height(float32(lines) * monoLineHeight(c)).Font("monospace")
+			if opts.Placeholder != "" {
+				in.Placeholder(opts.Placeholder)
+			}
+			if in.Changed() && opts.MaxLines > 0 {
+				// What is cut is kept, the rest dropped: the cap says how
+				// long the value is allowed to be, and a field that cut the
+				// other way would keep the tail of a paste and throw away
+				// the beginning somebody meant to keep.
+				if cut := cutToLines(*value, opts.MaxLines); cut != *value {
+					*value = cut
+					// The editor reads the pointer back at the top of the
+					// next frame; ask for that frame, so what the cap kept
+					// is what is on screen.
+					c.Invalidate()
+				}
+			}
+			return dressInput(in, "", opts.ReadOnly)
+		})
+		ui.Text(c, itoa(countLines(*value))+" "+core.Msg(c, "input.lines", core.Def("lines"))).
+			TextColor(k.TextFaint).FontSize(core.FontSize(c, theme.CaptionSize))
+	})
+	return col
 }
 
 // PasswordInputOptions configure a PasswordInput.
@@ -620,6 +708,40 @@ func countFilled(digits []string) int {
 		}
 	}
 	return n
+}
+
+// countLines is how many lines s holds: the number of breaks plus one, which
+// is what an empty document is, one line, and what a line of a file is.
+func countLines(s string) int {
+	n := 1
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' {
+			n++
+		}
+	}
+	return n
+}
+
+// cutToLines is s with everything past its max-th line taken out, keeping the
+// lines from the top and no break where the cut was made.
+func cutToLines(s string, max int) string {
+	if max <= 0 {
+		return s
+	}
+	n, cut := 1, -1
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' {
+			n++
+			if n > max {
+				cut = i
+				break
+			}
+		}
+	}
+	if cut < 0 {
+		return s
+	}
+	return s[:cut]
 }
 
 func itoa(n int) string {
