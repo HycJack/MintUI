@@ -356,6 +356,14 @@ func paletteBody(c *ui.Context, open *bool, rows []Command, opts CommandPaletteO
 	// before a closure inside its own children can ask it about a key.
 	keys := ui.Box(c).FillWidth()
 	keys.Children(func() {
+		// Escape, once more and only for a non-modal palette: the layer
+		// behind reads it when it is modal, and a sheet that does not dim the
+		// page is showing that page on purpose — so the promise that Escape
+		// closes the palette either way has to be kept here, in the palette's
+		// own body, where an overlay's keys arrive first.
+		if opts.NonModal && keys.OverlayShortcut(0, ui.KeyEscape) {
+			*open = false
+		}
 		paletteStep(keys, len(rows), opts.Highlight)
 
 		field := ui.TextInputBase(c, opts.Query).FillWidth().

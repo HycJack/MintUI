@@ -231,6 +231,46 @@ func TestWindowAroundKeepsTheCurrentPageVisible(t *testing.T) {
 	}
 }
 
+// A page past the end is what two bars over one page pointer produce, the
+// narrow one beside the wide one: the bar must still draw its numbers, because
+// "two arrows and nothing between them" is not a control. It draws them at the
+// last page it has, and its arrows walk back from there.
+func TestPaginationDrawsItsPagesWhenThePageIsPastTheEnd(t *testing.T) {
+	page, pages := 9, 3
+	tt := ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		Pagination(c, PaginationOptions{Page: &page, Pages: pages, Window: 2})
+	}, 700, 160)
+	for _, want := range []string{"1", "2", "3"} {
+		if !tt.HasText(want) {
+			t.Errorf("the bar did not show page %s; shown: %q", want, tt.Texts())
+		}
+	}
+	if err := tt.Click("Previous"); err != nil {
+		t.Fatal(err)
+	}
+	// Zero-based, as everywhere else: the page before the last one.
+	if page != 1 {
+		t.Errorf("Previous from the last page left page = %d, want 1", page)
+	}
+}
+
+func TestWindowAroundSurvivesAPageBeyondTheEnd(t *testing.T) {
+	// A page past the end is what a filter that shrank the result set leaves
+	// behind: the caller's index is real, and it is past the last page. The
+	// window still has to come back, because an unclamped lo gave the slice a
+	// negative capacity and panicked.
+	got := windowAround(9, 3, 2)
+	if len(got) == 0 {
+		t.Fatalf("windowAround(9, 3, 2) = %v, which is no page at all", got)
+	}
+	for _, p := range got {
+		if p < 0 || p >= 3 {
+			t.Fatalf("windowAround(9, 3, 2) = %v, which is out of range", got)
+		}
+	}
+}
+
 func TestToolbarGroupsItsActions(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})

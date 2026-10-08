@@ -265,6 +265,14 @@ type PaginationResult struct {
 
 // Pagination moves through pages. It shows a **window** of numbers rather than
 // all of them: a hundred pages of "1 2 3 … 100" is a wall, not a control.
+//
+// A page outside [0, Pages) is drawn as the nearest one inside it rather than
+// refused: two bars can share one page pointer — a narrow one drawn beside a
+// wide one — and then the narrower bar is asked for a page it does not have.
+// Drawn as it stood, it showed two arrows and no numbers between them; drawn
+// at the nearest page it has, it is a bar on the last page and its arrows walk
+// back from there. The caller's own page is written only by a press, so
+// nothing here moves their state behind their back.
 func Pagination(c *ui.Context, opts PaginationOptions) PaginationResult {
 	k, u := core.Tokens(c), core.Density(c).Unit()
 	if opts.Page == nil {
@@ -273,6 +281,7 @@ func Pagination(c *ui.Context, opts PaginationOptions) PaginationResult {
 	if opts.Pages <= 0 {
 		panic("navigation: Pagination needs at least one page")
 	}
+	cur := min(max(*opts.Page, 0), opts.Pages-1)
 	window := opts.Window
 	if window <= 0 {
 		window = 2
@@ -305,10 +314,10 @@ func Pagination(c *ui.Context, opts PaginationOptions) PaginationResult {
 	}
 
 	bar := ui.Row(c).AlignItems(ui.Center).Gap(u).Children(func() {
-		arrow(prev, (*opts.Page)-1)
-		pages := windowAround(*opts.Page, opts.Pages, window)
+		arrow(prev, cur-1)
+		pages := windowAround(cur, opts.Pages, window)
 		for _, p := range pages {
-			sel := p == *opts.Page
+			sel := p == cur
 			col, bg := k.TextMuted, k.Surface
 			if sel {
 				col, bg = k.OnFill, k.Fill
@@ -323,7 +332,7 @@ func Pagination(c *ui.Context, opts PaginationOptions) PaginationResult {
 				r.Page = p
 			}
 		}
-		arrow(next, (*opts.Page)+1)
+		arrow(next, cur+1)
 	})
 	r.Element = bar
 	return r
@@ -332,13 +341,22 @@ func Pagination(c *ui.Context, opts PaginationOptions) PaginationResult {
 // windowAround returns the page numbers to show for a window of w either side
 // of cur, always keeping cur visible and never going out of range.
 func windowAround(cur, total, w int) []int {
-	lo := cur - w
-	hi := cur + w
+	if total <= 0 {
+		return nil
+	}
+	// Both ends are clamped: hi because a window runs off the end of the list,
+	// lo because cur itself can — a filter that shrank the result set leaves
+	// the caller's page past the last one — and an unclamped lo under a
+	// clamped hi gave the slice a negative capacity, which panics.
+	lo, hi := cur-w, cur+w
 	if lo < 0 {
 		lo = 0
 	}
 	if hi >= total {
 		hi = total - 1
+	}
+	if lo > hi {
+		lo = hi
 	}
 	out := make([]int, 0, hi-lo+1)
 	for i := lo; i <= hi; i++ {

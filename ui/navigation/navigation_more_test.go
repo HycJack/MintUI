@@ -535,6 +535,28 @@ func TestCommandPaletteEscapeClosesIt(t *testing.T) {
 	wantNotShown(t, tt, "Type a command")
 }
 
+// NonModal says Escape closes the palette either way, which is what a palette
+// over a board somebody is still reading has to offer: the layer behind it
+// reads Escape only when it is modal, and a non-modal layer has no scrim to
+// click either.
+func TestCommandPaletteEscapeClosesWhenNonModal(t *testing.T) {
+	open, hl := true, 0
+	query := ""
+	tt := ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		CommandPalette(c, &open, commands, CommandPaletteOptions{
+			Query: &query, Highlight: &hl, NonModal: true,
+		})
+	}, 900, 600)
+	wantShown(t, tt, "Type a command")
+
+	tt.Key(0, ui.KeyEscape)
+	if open {
+		t.Fatal("Escape left a non-modal palette open")
+	}
+	wantNotShown(t, tt, "Type a command")
+}
+
 // A press on a row runs that row, whichever one it is: the pointer is a way
 // of choosing too, not only the keyboard.
 func TestCommandPaletteAPressRunsItsRow(t *testing.T) {
