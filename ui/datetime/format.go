@@ -257,36 +257,51 @@ func InRange(t, start, end time.Time) bool {
 // ── durations ────────────────────────────────────────────────────────────────
 
 // DurationText writes a length the way a person says it: the two largest
-// units that are not zero, such as "1h 30m", "2d 4h" or "45s".
+// units that are not zero, such as "1h 30m", "2d 4h" or "45s". A length under
+// a second is in milliseconds, because there is no smaller unit here to count
+// it in and rounding it to "0s" would answer with a different length.
 //
 // Two units is the limit because a booking form has room for "1d 2h 30m" and
 // nothing for the rest. Zero is "0m" rather than an empty string, because an
 // empty duration field reads as a missing value rather than as no time at all.
+// A negative length keeps its sign in front, as "-30m".
 func DurationText(d time.Duration) string {
-	if d < 0 {
-		return "-" + DurationText(-d)
+	neg := d < 0
+	// The magnitude, in unsigned arithmetic, and never a recursion on the
+	// negated value: the most negative duration negates back to itself, so
+	// this recursed on its own answer until the stack overflowed, and a stack
+	// overflow is not a panic recover() can catch. Unsigned is also the only
+	// arithmetic that holds that one length, which int64 cannot as a
+	// positive number.
+	left := uint64(d)
+	if neg {
+		left = uint64(-(d + 1)) + 1
 	}
-	if d == 0 {
+	if left == 0 {
 		return "0m"
 	}
 	units := []struct {
 		size   time.Duration
 		suffix string
 	}{
-		{24 * time.Hour, "d"}, {time.Hour, "h"}, {time.Minute, "m"}, {time.Second, "s"},
+		{24 * time.Hour, "d"}, {time.Hour, "h"}, {time.Minute, "m"},
+		{time.Second, "s"}, {time.Millisecond, "ms"},
 	}
 	var parts []string
-	left := d
 	for _, u := range units {
-		if n := left / u.size; n > 0 {
-			parts = append(parts, itoa(int(n))+u.suffix)
-			left -= n * u.size
+		if n := left / uint64(u.size); n > 0 {
+			parts = append(parts, strconv.FormatUint(n, 10)+u.suffix)
+			left -= n * uint64(u.size)
 			if len(parts) == 2 {
 				break
 			}
 		}
 	}
-	return strings.Join(parts, " ")
+	out := strings.Join(parts, " ")
+	if neg {
+		return "-" + out
+	}
+	return out
 }
 
 // ParseDurationText reads what DurationText wrote, in the same vocabulary.
@@ -300,21 +315,33 @@ func ParseDurationText(s string) (time.Duration, error) {
 	}
 	var total time.Duration
 	for _, part := range strings.Fields(s) {
-		if len(part) < 2 {
+		// "ms" is two letters where every other unit is one, so the unit is
+		// taken off the end by what it is rather than by its last byte: "500"
+		// is half a second, not five hundred of nothing.
+		var unit string
+		switch {
+		case strings.HasSuffix(part, "ms"):
+			unit = "ms"
+			part = part[:len(part)-2]
+		case len(part) > 1:
+			unit, part = part[len(part)-1:], part[:len(part)-1]
+		default:
 			return 0, fmt.Errorf("datetime: %q is not a duration", s)
 		}
-		n, err := strconv.Atoi(part[:len(part)-1])
+		n, err := strconv.Atoi(part)
 		if err != nil {
 			return 0, fmt.Errorf("datetime: %q is not a duration", s)
 		}
-		switch part[len(part)-1] {
-		case 's':
+		switch unit {
+		case "ms":
+			total += time.Duration(n) * time.Millisecond
+		case "s":
 			total += time.Duration(n) * time.Second
-		case 'm':
+		case "m":
 			total += time.Duration(n) * time.Minute
-		case 'h':
+		case "h":
 			total += time.Duration(n) * time.Hour
-		case 'd':
+		case "d":
 			total += time.Duration(n) * 24 * time.Hour
 		default:
 			return 0, fmt.Errorf("datetime: %q is not a duration", s)

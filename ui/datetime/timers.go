@@ -259,7 +259,13 @@ func Stopwatch(c *ui.Context, opts StopwatchOptions) StopwatchResult {
 			}
 			if b := input.Button(c, reset, input.ButtonOptions{Label: reset}); b.Clicked() {
 				*opts.Start = time.Time{}
-				*opts.Laps = nil
+				if opts.Laps != nil {
+					// Truncated rather than nil: Reset is drawn whether or not
+					// the caller wants laps, so the write has to be guarded —
+					// and nilling the caller's slice would hand them back a nil
+					// and throw away the array their own laps live in.
+					*opts.Laps = (*opts.Laps)[:0]
+				}
 				r.reset = true
 			}
 		})

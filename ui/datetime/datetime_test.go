@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -341,6 +342,36 @@ func TestDurationTextWritesTwoUnits(t *testing.T) {
 	}
 	if _, err := datetime.ParseDurationText("soon"); err == nil {
 		t.Error("a word is not a duration")
+	}
+}
+
+// The most negative duration there is has no positive: negating it is itself,
+// so a DurationText that recursed on the negation of its argument never came
+// back, and the frame that asked it took the process with it. It has to answer
+// with a length as well — a bare "-" would be a sign with nothing after it.
+func TestDurationTextSurvivesTheMostNegativeDuration(t *testing.T) {
+	got := datetime.DurationText(math.MinInt64)
+	if got == "" || got == "-" {
+		t.Errorf("DurationText(math.MinInt64) = %q, which says no length at all", got)
+	}
+}
+
+// Under a minute there is no unit left to count, so the answer has to come
+// from the seconds rather than from nothing: the doc says zero is "0m" rather
+// than an empty string, and half a second is a length, not a blank.
+func TestDurationTextSaysSomethingAboutSubSecondDurations(t *testing.T) {
+	if got := datetime.DurationText(500 * time.Millisecond); got == "" {
+		t.Error("DurationText(500ms) returned an empty string, but its doc says " +
+			"zero is \"0m\" rather than an empty string")
+	}
+	// What it writes, it reads back — the two are one vocabulary, and the
+	// milliseconds are now part of it.
+	back, err := datetime.ParseDurationText(datetime.DurationText(1500 * time.Millisecond))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back != 1500*time.Millisecond {
+		t.Errorf("read back %v, want 1.5s", back)
 	}
 }
 
@@ -1544,6 +1575,23 @@ func TestStopwatchStartsAndStops(t *testing.T) {
 		t.Errorf("the clock started at %v, want the caller's now %v", start, now)
 	}
 	// A reset zeroes the caller's start, and the reading with it.
+	if err := tt.Click("Reset"); err != nil {
+		t.Fatal(err)
+	}
+	if !start.IsZero() {
+		t.Errorf("a reset left the start at %v", start)
+	}
+}
+
+// Laps is optional — nil is what draws no lap button — so Reset, which is
+// drawn either way, has to cope with the stopwatch that was given none.
+func TestStopwatchResetWithoutALapListDoesNotPanic(t *testing.T) {
+	now := fixed()
+	start := now
+	tt := ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		datetime.Stopwatch(c, datetime.StopwatchOptions{Start: &start, Now: now})
+	}, 420, 260)
 	if err := tt.Click("Reset"); err != nil {
 		t.Fatal(err)
 	}
