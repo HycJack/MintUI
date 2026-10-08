@@ -1,6 +1,7 @@
 package pages_test
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -129,4 +130,54 @@ func TestOnlyTheUnpromisedGoesMissing(t *testing.T) {
 	if miss := p.Missing(p.Draw()); len(miss) != 1 || miss[0] != "only named" {
 		t.Fatalf("Missing = %v, want only the label-only box", miss)
 	}
+}
+
+// TestPagesRenderDeterministically draws every page twice with animation off
+// and requires the two images to be identical.
+//
+// Animation is excluded on purpose: a spinner legitimately draws differently a
+// millisecond later, and a gate that fails on that teaches nobody anything. What
+// must not change between two draws of an untouched page is everything else — a
+// page that mutates its own state while drawing leaves the next draw (or the
+// dark-mode draw) showing something different, which is how a screenshot came
+// to be one thing on the check that ran before it and another thing in the PNG
+// that followed.
+//
+// A page declaring Page.ClockDriven is skipped: its two draws are allowed to
+// differ because its demo reads the real clock, and that page has said so.
+func TestPagesRenderDeterministically(t *testing.T) {
+	for _, p := range showcase.Sorted() {
+		t.Run(p.Package, func(t *testing.T) {
+			if p.ClockDriven {
+				t.Skip("the page's demo depends on the real clock, so its two " +
+					"draws are allowed to differ")
+			}
+			draw := func() []uint8 {
+				tt := ui.NewTester(func(c *ui.Context) {
+					core.Use(c, core.Settings{Mode: core.Light})
+					core.WithReducedMotion(c, true)
+					p.Paint(c)
+				}, p.Width, p.Height)
+				return tt.Image().Pix
+			}
+			first, second := draw(), draw()
+			if !bytes.Equal(first, second) {
+				t.Errorf("%s drew differently on the second pass (%d of %d bytes differ)",
+					p.Package, diffBytes(first, second), len(first))
+			}
+		})
+	}
+}
+
+func diffBytes(a, b []uint8) int {
+	if len(a) != len(b) {
+		return len(a)
+	}
+	n := 0
+	for i := range a {
+		if a[i] != b[i] {
+			n++
+		}
+	}
+	return n
 }

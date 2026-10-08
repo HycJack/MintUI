@@ -31,7 +31,6 @@ var (
 	snoozeOpen         = true
 	memberSel          = 0
 	memberQuery        = ""
-	cardOpen           = true
 	set                = "in the workshop until 4"
 	setOpen            = false
 	messaging_none     = ""
@@ -354,13 +353,17 @@ func messagingPeopleSection(c *ui.Context) {
 				}
 			})
 			showcase.Field(c, "UserProfileCard — 指针停在名字上才出来的小卡")
-			anchor := input.Button(c, "Andre Thomson", input.ButtonOptions{})
-			messaging.UserProfileCard(c, messaging.UserProfileCardOptions{
-				Anchor: anchor, Open: &cardOpen, Name: "Andre Thomson",
-				Handle: "@andre", Role: "field engineer",
-				Presence: messaging.PresenceAway, Since: "12 minutes ago",
-				LocalTime: "16:04 in Lisbon", Channels: "#north · #site-visits",
-			})
+			// Only the anchor is drawn, and nothing here stands in for the card.
+			// A UserProfileCard is an overlay.HoverCard, and ui/overlay/
+			// hovercard.go writes false into the caller's *bool on every frame
+			// where neither the anchor nor the card is under the pointer, so a
+			// caller has no way to hold one open and a headless draw has no
+			// pointer at all. Leaving the flag true would paint a frame no
+			// window is ever in, and two draws of it would disagree, which is
+			// how -shots started failing on a clean tree. What a screenshot can
+			// be trusted to show is the control the card hangs off, the way the
+			// Tooltip on the overlay page shows its tip's.
+			input.Button(c, "Andre Thomson", input.ButtonOptions{})
 		})
 	})
 

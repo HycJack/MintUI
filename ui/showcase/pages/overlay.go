@@ -19,7 +19,7 @@ import (
 var (
 	overlayPopoverOpen = true
 	confirmOpen        = true
-	hoverOpen          = true
+	roomOpen           = true
 	dialogOpen         = true
 	alertOpen          = true
 	drawerOpen         = true
@@ -83,6 +83,10 @@ func init() {
 // from a list of names: a panel is in the flow, an anchored layer hangs off
 // a control, and a layer with a scrim owns the whole window.
 //
+// HoverCard is the one layer here with no demo of its own, because a caller
+// cannot hold one open and a screenshot has no pointer to hold it with;
+// anchorSection says so where its slot would have been.
+//
 // The three that own the window — the dialog, the alert and the drawer — are
 // at the bottom, over a band that stands for the window they would be opened
 // over. A modal layer is drawn over the entire window whatever page it is
@@ -132,7 +136,7 @@ func overlayPanelSection(c *ui.Context) {
 // stack them in a row and let them cover one another.
 func anchorSection(c *ui.Context) {
 	k := core.Tokens(c)
-	showcase.Section(c, "Popover、Popconfirm、HoverCard、Tooltip — 挂在控件上")
+	showcase.Section(c, "Popover、Popconfirm、PopoverRoom、Tooltip — 挂在控件上")
 	stage := func(title, note string, build func()) {
 		// Each stage is a frame with a fixed height and room at the bottom,
 		// because the layer is drawn outside the row of stages and lands
@@ -154,6 +158,7 @@ func anchorSection(c *ui.Context) {
 		anchor := input.Button(c, "分组方式", input.ButtonOptions{})
 		if anchor.Clicked() {
 			overlayPopoverOpen = true
+			c.Invalidate()
 		}
 		overlay.Popover(c, anchor, &overlayPopoverOpen, overlay.PopoverOptions{
 			// NonModal because a modal popover dims the whole window, and a
@@ -173,20 +178,33 @@ func anchorSection(c *ui.Context) {
 		anchor := input.Button(c, "删除回访", input.ButtonOptions{Danger: true})
 		if anchor.Clicked() {
 			confirmOpen = true
+			c.Invalidate()
 		}
 		overlay.Popconfirm(c, anchor, &confirmOpen, overlay.PopconfirmOptions{
 			Title: "删除 CB-2871？", Body: "删掉之后不在任何一列里。",
 			Confirm: "删除", Cancel: "留着", Destructive: true,
 		})
 	})
-	stage("HoverCard", "指针停在上面才出来的一张小卡", func() {
+	stage("PopoverRoom", "一张解释名字的卡；同一块面板，只是宽一点的那面", func() {
 		anchor := input.Button(c, "Andre Thomson", input.ButtonOptions{})
 		if anchor.Clicked() {
-			hoverOpen = true
+			roomOpen = true
+			c.Invalidate()
 		}
-		overlay.HoverCard(c, anchor, &hoverOpen, overlay.HoverCardOptions{
-			Modal: false,
-			Title: "Andre Thomson", Subtitle: "North 分支 · 本周 14 单",
+		// A HoverCard is the card a name would open, and it is deliberately not
+		// what is drawn here. ui/overlay/hovercard.go writes false into the
+		// caller's *bool on every frame where neither the anchor nor the card
+		// is under the pointer, so a caller has no way to pin one open and a
+		// headless draw has no pointer at all: leaving the flag true would paint
+		// a frame no window is ever in, and two draws of it would disagree,
+		// which is how -shots started failing on a clean tree. A PopoverRoom is
+		// the same panel on the roomier surface — and it takes the flag without
+		// taking it back, which is the whole difference. It also stands here
+		// rather than a second Popover because the stage above is that one.
+		overlay.PopoverRoom(c, anchor, &roomOpen, overlay.PopoverRoomOptions{
+			Modal:    false,
+			Title:    "Andre Thomson",
+			Subtitle: "North 分支 · 本周 14 单",
 			Body: func() {
 				ui.Text(c, "上次在线：今天 09:12").TextColor(core.Tokens(c).TextMuted).
 					FontSize(core.FontSize(c, theme.MetaSize))
@@ -342,12 +360,15 @@ func modalSection(c *ui.Context) {
 			FontSize(core.FontSize(c, theme.CaptionSize))
 		if input.Button(c, "Dialog", input.ButtonOptions{}).Clicked() {
 			dialogOpen = true
+			c.Invalidate()
 		}
 		if input.Button(c, "AlertDialog", input.ButtonOptions{}).Clicked() {
 			alertOpen = true
+			c.Invalidate()
 		}
 		if input.Button(c, "Drawer", input.ButtonOptions{}).Clicked() {
 			drawerOpen = true
+			c.Invalidate()
 		}
 	})
 }
