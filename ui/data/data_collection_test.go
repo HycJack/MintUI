@@ -1280,14 +1280,22 @@ func TestCarouselPagesWithItsArrowsAndItsDots(t *testing.T) {
 		})
 	}
 	tt := ui.NewTester(view, 500, 400)
+	// The assertions say which slide is in the window, which is a question
+	// about the index, not about where the slide is on its way. With the
+	// desktop's motion on, the slide is still travelling on the frame after
+	// a press and the answer depends on how fast the frames happen to run;
+	// asking for less motion makes each press land the slide at once.
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 
-	// A slide is in the window when it is the one the index says, a slide
-	// width along: the ones either side of it are off to the sides, which is
-	// what a carousel showing one slide at a time means.
+	// A slide is on show when the row's translation has brought it to the
+	// window's left edge: the ones either side of it are off to the sides,
+	// clipped away or peaking in from the edge where the window is wider
+	// than a slide, which is what a carousel showing one slide at a time
+	// means.
 	shown := func(n int) bool {
 		t.Helper()
 		r, ok := tt.Find(fmt.Sprintf("Body %d", n))
-		return ok && r.W > 0 && r.X >= float32(320*at) && r.X < float32(320*(at+1))
+		return ok && r.W > 0 && r.X == 0
 	}
 	if !shown(1) || shown(2) || shown(3) {
 		first, _ := tt.Find("Body 1")

@@ -97,15 +97,20 @@ func Carousel(c *ui.Context, opts CarouselOptions) *ui.Element {
 
 		// The width a slide is laid out in is said outright, because a scroll
 		// window hands its content what fits rather than what it asked for.
-		// The window's own width is the one it had in the frame before, and
-		// there is none on the frame the carousel appears on — that frame
-		// lays the slides out at the width of what is in them and asks for
-		// the one that measures the window.
+		// Only when the caller says nothing is the window's own width taken —
+		// and that is the one it had in the frame before, of which there is
+		// none on the frame the carousel appears on: that frame lays the
+		// slides out at the width of what is in them and asks for the one
+		// that measures the window. A width the caller did say is not
+		// second-guessed against the window: a slide wider or narrower than
+		// the window is the caller's choice, not a measurement error.
 		w := opts.Width
-		if measured := window.Bounds().W; measured > 0 {
-			w = measured
-		} else {
-			c.Invalidate()
+		if w <= 0 {
+			if measured := window.Bounds().W; measured > 0 {
+				w = measured
+			} else {
+				c.Invalidate()
+			}
 		}
 		// The slides move across rather than being swapped. A slide that
 		// disappears while another appears reads as two things; a slide that
