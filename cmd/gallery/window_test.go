@@ -1,8 +1,10 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -145,20 +147,77 @@ func TestShotsToChecksBeforeItRenders(t *testing.T) {
 // TestShotsToRefusesToRenderWhatDidNotDraw is the other half of the same rule:
 // a page that fails its promise stops the run, so the folder holds a gallery
 // rather than a gallery plus a page that came out blank.
+//
+// It also has to say which page. The check runs before anything is rendered, so
+// a failing run writes no PNGs at all and there is no file to match a warning
+// against — a run that cannot name its failure is a run nobody can act on.
 func TestShotsToRefusesToRenderWhatDidNotDraw(t *testing.T) {
 	dir := t.TempDir()
-	liar := gallery.Page{
-		Package: "liar", Width: 200, Height: 120,
-		Want:   []string{"promised"},
-		Render: func(c *ui.Context) {},
+	// Two failures, so a report that named only the first cannot pass. The
+	// promised text is the same on both pages, which is the point: a warning
+	// naming only the text cannot tell them apart. The names share no
+	// substring either, so a run that named only one of them cannot pass by
+	// naming the other.
+	liar := func(pkg string) gallery.Page {
+		return gallery.Page{
+			Package: pkg, Width: 200, Height: 120,
+			Want:   []string{"promised"},
+			Render: func(c *ui.Context) {},
+		}
 	}
-	err := shotsTo(dir, []gallery.Page{liar}, false, 1)
+	pages := []gallery.Page{liar("alpha"), liar("beta")}
+
+	var err error
+	out := captureStdout(t, func() { err = shotsTo(dir, pages, false, 1) })
 	if err == nil {
-		t.Fatal("shotsTo wrote a page that promised text it never drew")
+		t.Fatal("shotsTo wrote pages that promised text they never drew")
 	}
-	if _, err := os.Stat(filepath.Join(dir, "liar.png")); !os.IsNotExist(err) {
-		t.Errorf("the PNG of a failing page was written anyway (stat err = %v)", err)
+	// Every failing package, on the warning and in what the caller prints to
+	// stderr: stdout may be redirected, and a caller reading only the error
+	// has to be able to act on it too.
+	for _, p := range pages {
+		if !strings.Contains(err.Error(), p.Package) {
+			t.Errorf("the error does not name %q: %v", p.Package, err)
+		}
+		if !strings.Contains(out, p.Package) {
+			t.Errorf("the warning does not name %q: %q", p.Package, out)
+		}
 	}
+	entries, readErr := os.ReadDir(dir)
+	if readErr != nil {
+		t.Fatalf("read the shots dir: %v", readErr)
+	}
+	if len(entries) != 0 {
+		t.Errorf("a failing run wrote %d PNGs; the folder reads as a gallery", len(entries))
+	}
+}
+
+// captureStdout runs f with os.Stdout replaced by a pipe and returns what was
+// printed to it. The gates report through stdout, so a test that says nothing
+// about what they printed is testing half of what they promise.
+func captureStdout(t *testing.T, f func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	saved := os.Stdout
+	os.Stdout = w
+	// Restored twice on purpose: once here, so the pipe is closed before
+	// anything reads it, and once on the way out in case f panics and the
+	// rest of the run inherits a closed stdout.
+	defer func() { os.Stdout = saved }()
+	done := make(chan string, 1)
+	go func() {
+		b, _ := io.ReadAll(r)
+		done <- string(b)
+	}()
+	f()
+	os.Stdout = saved
+	w.Close()
+	out := <-done
+	r.Close()
+	return out
 }
 
 // TestCheckGatesRejectsAPageThatPromisesNothing is the floor -check enforces.

@@ -137,8 +137,12 @@ func shotsTo(dir string, pages []gallery.Page, dark bool, scale int) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	if bad := checkShots(pages); bad > 0 {
-		return fmt.Errorf("%d pages did not draw what they promised", bad)
+	if miss := checkShots(pages); len(miss) > 0 {
+		// The failing packages are named again here, because stderr is
+		// where an operator or a CI log ends up looking and stdout may
+		// have gone somewhere else entirely.
+		return fmt.Errorf("%d pages did not draw what they promised: %s",
+			len(miss), strings.Join(miss, ", "))
 	}
 	for _, p := range pages {
 		for _, d := range []bool{false, true} {
@@ -169,18 +173,22 @@ func shotsTo(dir string, pages []gallery.Page, dark bool, scale int) error {
 }
 
 // checkShots draws every page once and reports the ones that did not draw what
-// they promised. It says nothing about which page: the run names every page as
-// it writes it, and a page that failed was named there already.
+// they promised, returning the packages it found failing.
+//
+// Every page is named, on the warning and in what the caller returns, because
+// the check runs before anything is rendered: a run that failed has no PNGs to
+// cross-reference the warning against, and a warning that names only a piece of
+// text cannot be turned into a file to open.
 //
 // Each page is drawn exactly once. It is the only draw the check is entitled
 // to: a page's demos are stateful, and the open state is spent by the frame it
 // first appears on, so a second draw of the same page is not the same page.
-func checkShots(pages []gallery.Page) int {
-	bad := 0
+func checkShots(pages []gallery.Page) []string {
+	var bad []string
 	for _, p := range pages {
 		if miss := p.Missing(p.Draw()); len(miss) > 0 {
-			fmt.Printf("  ⚠ did not draw %v\n", miss)
-			bad++
+			fmt.Printf("  ⚠ %-12s did not draw %v\n", p.Package, miss)
+			bad = append(bad, p.Package)
 		}
 	}
 	return bad
