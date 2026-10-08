@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/egoist/mygo/ui"
+
+	"github.com/HycJack/MintUI/ui/core"
 	"github.com/HycJack/MintUI/ui/showcase"
 
 	_ "github.com/HycJack/MintUI/ui/showcase/pages"
@@ -81,5 +84,49 @@ func TestPagesDrawInBothAppearances(t *testing.T) {
 		if len(drawn) < 3 {
 			t.Errorf("%s drew %d texts: %v", p.Package, len(drawn), drawn)
 		}
+	}
+}
+
+// stubPage is a page whose only content is what the test draws, so a test can
+// say what a person would be looking at without a gallery page in the way. It
+// is never registered: it is a page under the gate, not one of them.
+func stubPage(render func(c *ui.Context), want ...string) showcase.Page {
+	return showcase.Page{
+		Package: "stub", Title: "stub",
+		Width: 400, Height: 300,
+		Want: want, Render: render,
+	}
+}
+
+// TestAnAccessibilityLabelIsNotDrawnText: a Want entry is a promise that a
+// person can see the text, while a Label is a promise to a screen reader. An
+// empty box carrying one has painted nothing, so it cannot be what the page
+// promised, and the check going green on such a page is the failure this
+// pins.
+func TestAnAccessibilityLabelIsNotDrawnText(t *testing.T) {
+	p := stubPage(func(c *ui.Context) {
+		ui.Box(c).Label("promised").Size(10, 10)
+	}, "promised")
+	if miss := p.Missing(p.Draw()); len(miss) != 1 {
+		t.Fatalf("a Label on an empty box satisfied Want: %v", miss)
+	}
+}
+
+// TestOnlyTheUnpromisedGoesMissing is the other half of the same promise: a
+// string that really is on the page satisfies its promise, or the check would
+// be one that can only fail and would be turned off within the week.
+//
+// The gap is the room a glyph's ink needs: descenders reach past the box the
+// engine reports for a line of text, so a box laid right under one picks up
+// its neighbour's pixels and reads as painted.
+func TestOnlyTheUnpromisedGoesMissing(t *testing.T) {
+	p := stubPage(func(c *ui.Context) {
+		ui.Column(c).Gap(core.Density(c).Unit() * 4).Children(func() {
+			ui.Text(c, "painted")
+			ui.Box(c).Label("only named").Size(10, 10)
+		})
+	}, "painted", "only named")
+	if miss := p.Missing(p.Draw()); len(miss) != 1 || miss[0] != "only named" {
+		t.Fatalf("Missing = %v, want only the label-only box", miss)
 	}
 }

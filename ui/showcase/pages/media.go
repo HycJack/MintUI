@@ -82,7 +82,11 @@ func init() {
 			"Audio 0:42",
 			// sound
 			"Waveform of the intake call", "Waveform of the whole clip, played to the end",
-			"Waveform with nothing loaded into it",
+			// The waveform of nothing is named rather than captioned, and its
+			// name is for a screen reader: a waveform is a painter, so its
+			// Label is never words on the page. The promise for that row is
+			// the line of text under it, which is what a person reads.
+			"上面三条：0.42 / 1.0 / 什么都没有",
 			"Band levels of the intake call, log axis",
 			"Band levels of the intake call, linear axis",
 			"Mic level, quiet", "Mic level, hot", "Mic level, clipping", "Mic level, muted",

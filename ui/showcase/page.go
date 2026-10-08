@@ -12,6 +12,7 @@
 package showcase
 
 import (
+	"image"
 	"sort"
 
 	"github.com/egoist/mygo/ui"
@@ -105,18 +106,94 @@ func (p Page) Paint(c *ui.Context) {
 	})
 }
 
-// Draw lays the page out headlessly and reports what it drew. It calls
+// Draw lays the page out headlessly and reports the text it painted. It calls
 // core.Use first, because that is the library's one hard rule and a page that
 // broke it would be a page that proves nothing.
+//
+// What it reports is painted text, not every string the engine can point a
+// reader at. Tester.Texts() is the engine's own list of the strings on the
+// page, and it includes the Label an element carries for assistive
+// technology, so it answers "can this be read out" where a Want entry asks
+// "can this be seen". A page of empty labelled boxes is in that list in full
+// and shows a blank window.
 func (p Page) Draw() []string {
 	tt := ui.NewTester(func(c *ui.Context) {
 		useForShowcase(c)
 		p.Paint(c)
 	}, p.Width, p.Height)
-	return tt.Texts()
+	return paintedTexts(tt)
 }
 
-// Missing returns the strings in Want that the page did not draw.
+// paintedTexts drops the strings the engine reported that nothing was drawn
+// for.
+//
+// MyGo does not say which of its strings were painted and which were only
+// named: an element's text and its label are both unexported and neither has
+// a getter, so the frame is the only place the difference shows. The question
+// asked of each string is therefore whether its box holds a picture — glyphs
+// put pixels of their own into the box they were laid out in — which is a
+// discriminator and not a proof, and its two limits are worth writing down.
+//
+// The first is the string's other occurrences. Tester.Find returns the box of
+// the first one the engine reported and nothing reaches the rest, so a string
+// reported more than once is taken on the engine's word: a page that captions
+// an image slot "空槽位" beneath the slot of that name is keeping its promise,
+// and the slot's own empty box is the only one this can look at.
+//
+// The second is the box itself. A box this window shows none of — clipped to
+// no width or no height, as content below a section or inside a collapsed one
+// is — cannot be judged from pixels, so its strings are taken on the engine's
+// word too. And a box that varies for some other reason, a border or a
+// gradient or an icon or a sibling's pixels, passes whether or not the string
+// is in it: the label's own box is all there is to look at.
+func paintedTexts(tt *ui.Tester) []string {
+	reported := tt.Texts()
+	times := map[string]int{}
+	for _, s := range reported {
+		times[s]++
+	}
+
+	img := tt.Image()
+	out := make([]string, 0, len(reported))
+	for _, s := range reported {
+		if times[s] > 1 {
+			out = append(out, s)
+			continue
+		}
+		if r, ok := tt.Find(s); ok {
+			box := image.Rect(int(r.X), int(r.Y), int(r.X+r.W), int(r.Y+r.H)).
+				Intersect(img.Bounds())
+			if !box.Empty() && oneColour(img, box) {
+				continue
+			}
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// oneColour reports whether a box is a single flat colour, which is what an
+// element that was laid out and painted nothing leaves behind.
+//
+// A box holding glyphs cannot come back as one colour: the glyphs are drawn
+// over whatever was already there, and the edge between them is blended
+// through every colour in between. The scan stops at the first pixel that
+// differs, so the whole box is only ever walked for a box that is the answer.
+func oneColour(img *image.RGBA, box image.Rectangle) bool {
+	flat := img.RGBAAt(box.Min.X, box.Min.Y)
+	for y := box.Min.Y; y < box.Max.Y; y++ {
+		for x := box.Min.X; x < box.Max.X; x++ {
+			if img.RGBAAt(x, y) != flat {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Missing returns the strings in Want that the page did not paint. drawn is
+// what Draw returned, and a Want entry is a promise that a person can see the
+// text, so a string nothing was drawn for does not keep it.
 func (p Page) Missing(drawn []string) []string {
 	have := map[string]bool{}
 	for _, d := range drawn {

@@ -802,11 +802,7 @@ func TickerTape(c *ui.Context, opts TickerTapeOptions) *ui.Element {
 		// rebuilt, which for a ticker is never.
 		offset := float32(0)
 		if !core.Reduced(c) {
-			seconds := float32(p.Now().UnixNano()) / 1e9
-			shift := seconds * speed
-			// Wrapped, not clamped: the tape runs off the left and comes back
-			// on the right, which is what makes the loop invisible.
-			offset = -(shift - float32(int(shift/span))*span)
+			offset = tapeOffset(p.Now(), span, speed)
 		}
 		x := r.X + offset
 		// Painted twice when the tape repeats, so that a window narrower than
@@ -834,6 +830,31 @@ func TickerTape(c *ui.Context, opts TickerTapeOptions) *ui.Element {
 			}
 		}
 	})
+}
+
+// tapeOffset is how far the tape has run past its own left edge: a position
+// within one loop of itself, so never positive and never further than a whole
+// tape away. Wrapped rather than clamped, because the tape running off the
+// left and coming back on the right is what makes the loop invisible.
+//
+// It is a position within one loop and not a distance travelled since the
+// epoch because the clock counts nanoseconds from 1970 and float32 cannot hold
+// that many seconds closely enough to divide the span back out of the product.
+// The subtraction that should leave a fraction of a tape leaves a number
+// thousands of pixels wide — at any clock past the first year, the tape ends
+// up scrolled clean out of its own clip and the strip draws nothing at all.
+// Wrapping the clock into one period before scaling keeps every number below
+// the width of the tape, which is where the precision is spent.
+func tapeOffset(now time.Time, span, speed float32) float32 {
+	period := int64(float64(span) / float64(speed) * float64(time.Second))
+	if period <= 0 {
+		return 0
+	}
+	ns := now.UnixNano() % period
+	if ns < 0 {
+		ns += period
+	}
+	return float32(-float64(ns) / 1e9 * float64(speed))
 }
 
 // tapeItem is one instrument on the tape, measured once when it is built

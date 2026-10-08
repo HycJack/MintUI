@@ -1831,6 +1831,28 @@ func TestTickerTape(t *testing.T) {
 	})
 }
 
+// TestTickerTapeStaysOnItsOwnTape: a tape that has run off its own left edge
+// draws nothing at all, and a strip of empty space where a row of prices
+// should be is a ticker that looks switched off. The clock is read in
+// nanoseconds from 1970, so the arithmetic that puts the tape back in its own
+// span has to survive that many seconds — hence the assertions are about the
+// answer rather than about one moment's answer.
+func TestTickerTapeStaysOnItsOwnTape(t *testing.T) {
+	span, speed := float32(412), float32(96)
+	for _, at := range []time.Time{
+		time.Unix(0, 0),
+		time.Now(),
+		time.Date(2038, 1, 19, 3, 14, 8, 0, time.UTC),
+		time.Date(2200, 3, 1, 0, 0, 0, 0, time.UTC),
+	} {
+		got := tapeOffset(at, span, speed)
+		if got > 0 || got < -span-1 {
+			t.Errorf("at %v the tape is %vpx past its own left edge, "+
+				"outside the %vpx it repeats over", at.Unix(), got, span)
+		}
+	}
+}
+
 func TestLevel2Quotes(t *testing.T) {
 	bids, asks := testBook()
 	selected := -1
