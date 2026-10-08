@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -104,4 +106,97 @@ func TestGalleryTakesClicksAfterLayerPages(t *testing.T) {
 	}
 	clickUntil(t, tt, &sel, pages, "theme")
 	clickUntil(t, tt, &sel, pages, "overlay")
+}
+
+// TestShotsToChecksBeforeItRenders pins the order the -shots run works in.
+//
+// A page is a program, not a picture: run it twice and the second run is not
+// the first one again. The overlay page's hover card starts open and closes
+// itself on the first frame that has no pointer over it, so its subtitle is
+// drawn once and never again. Asking a page what it promised after it has
+// already been rendered asks it for something it has given away, which fails
+// the run on a tree where nothing is broken.
+func TestShotsToChecksBeforeItRenders(t *testing.T) {
+	dir := t.TempDir()
+	shown := false
+	// A page that only shows its promised text on the first draw: the
+	// hover card, reduced to the one thing it is actually asserting.
+	flip := gallery.Page{
+		Package: "flip", Width: 200, Height: 120,
+		Want: []string{"promised"},
+		Render: func(c *ui.Context) {
+			if !shown {
+				shown = true
+				ui.Text(c, "promised")
+			}
+		},
+	}
+	// A nil error is the whole assertion: the check got the first draw, so
+	// "promised" was still there when it asked. Were the order reversed the
+	// render would have spent it and the run would come back with an error.
+	if err := shotsTo(dir, []gallery.Page{flip}, false, 1); err != nil {
+		t.Fatalf("shotsTo: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "flip.png")); err != nil {
+		t.Errorf("no PNG was written: %v", err)
+	}
+}
+
+// TestShotsToRefusesToRenderWhatDidNotDraw is the other half of the same rule:
+// a page that fails its promise stops the run, so the folder holds a gallery
+// rather than a gallery plus a page that came out blank.
+func TestShotsToRefusesToRenderWhatDidNotDraw(t *testing.T) {
+	dir := t.TempDir()
+	liar := gallery.Page{
+		Package: "liar", Width: 200, Height: 120,
+		Want:   []string{"promised"},
+		Render: func(c *ui.Context) {},
+	}
+	err := shotsTo(dir, []gallery.Page{liar}, false, 1)
+	if err == nil {
+		t.Fatal("shotsTo wrote a page that promised text it never drew")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "liar.png")); !os.IsNotExist(err) {
+		t.Errorf("the PNG of a failing page was written anyway (stat err = %v)", err)
+	}
+}
+
+// TestCheckGatesRejectsAPageThatPromisesNothing is the floor -check enforces.
+// A page whose Want is empty checks itself perfectly: nothing was promised,
+// so nothing can be missing, and the gate went green on a blank page. Three
+// is the same floor the pages gate test uses, kept in step deliberately.
+//
+// Every page here draws exactly what it promises, so the floor is the only
+// thing that can fail any of them.
+func TestCheckGatesRejectsAPageThatPromisesNothing(t *testing.T) {
+	promising := func(want []string) gallery.Page {
+		return gallery.Page{
+			Width: 200, Height: 120, Want: want,
+			Render: func(c *ui.Context) {
+				for _, w := range want {
+					ui.Text(c, w)
+				}
+			},
+		}
+	}
+
+	blank := promising(nil)
+	blank.Package = "blank"
+	if bad := checkGates([]gallery.Page{blank}); bad != 1 {
+		t.Errorf("a page promising nothing: %d pages failed, want 1", bad)
+	}
+
+	// One short of the floor fails too, so three is the floor and not merely
+	// "empty is not allowed".
+	short := promising([]string{"a", "b"})
+	short.Package = "short"
+	if bad := checkGates([]gallery.Page{short}); bad != 1 {
+		t.Errorf("a page promising 2 texts: %d pages failed, want 1", bad)
+	}
+
+	atFloor := promising([]string{"one", "two", "three"})
+	atFloor.Package = "floor"
+	if bad := checkGates([]gallery.Page{atFloor}); bad != 0 {
+		t.Errorf("a page at the floor: %d pages failed, want 0", bad)
+	}
 }

@@ -58,27 +58,7 @@ func main() {
 
 	switch {
 	case *check:
-		bad := 0
-		for _, p := range pages {
-			miss := p.Missing(p.Draw())
-			if len(miss) > 0 {
-				fmt.Printf("✗ %-12s did not draw %v\n", p.Package, miss)
-				bad++
-				continue
-			}
-			if !p.Anchored && BottomFlush(render(p, false)) {
-				// Not a failure: the page drew everything it promised. But
-				// its last row is not empty, so whatever is at the end of it
-				// is cut off, and a PNG of that reads as a page that ended
-				// there on purpose.
-				fmt.Printf("✓ %-12s %d promised texts, but taller than its own %d — "+
-					"the bottom is cut\n", p.Package, len(p.Want), p.Height)
-				bad++
-				continue
-			}
-			fmt.Printf("✓ %-12s %d promised texts\n", p.Package, len(p.Want))
-		}
-		if bad > 0 {
+		if checkGates(pages) > 0 {
 			os.Exit(1)
 		}
 	case *fitFlag:
@@ -90,18 +70,76 @@ func main() {
 			fmt.Printf("%-12s %d\n", p.Package, fit(p))
 		}
 	case *shots != "":
-		shotsTo(*shots, pages, *dark, *scale)
+		if err := shotsTo(*shots, pages, *dark, *scale); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	default:
 		window(pages)
 	}
 }
 
-func shotsTo(dir string, pages []gallery.Page, dark bool, scale int) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+// checkGates draws every page and reports how many fell short of what they
+// promised: a page that drew less than it said it would, a page that promises
+// so little that it is not a gallery of its package, and a page taller than the
+// height it declares.
+//
+// It returns the count rather than exiting, so a test can ask the same
+// question this mode asks without ending the test binary on the way out.
+func checkGates(pages []gallery.Page) int {
 	bad := 0
+	for _, p := range pages {
+		miss := p.Missing(p.Draw())
+		if len(miss) > 0 {
+			fmt.Printf("✗ %-12s did not draw %v\n", p.Package, miss)
+			bad++
+			continue
+		}
+		// A page that promises two texts cannot fail the check above, so the
+		// gate went green on it: nothing was promised, so nothing could be
+		// missing. The floor is the same three ui/showcase/pages/gate_test.go
+		// uses, and it is the floor rather than a rule about empty Wants
+		// because a package with one component still has more than one thing
+		// worth looking at.
+		if len(p.Want) < 3 {
+			fmt.Printf("✗ %-12s promises only %d texts — a page that shows almost "+
+				"nothing is not a gallery of that package\n", p.Package, len(p.Want))
+			bad++
+			continue
+		}
+		if !p.Anchored && BottomFlush(render(p, false)) {
+			// Not a failure: the page drew everything it promised. But
+			// its last row is not empty, so whatever is at the end of it
+			// is cut off, and a PNG of that reads as a page that ended
+			// there on purpose.
+			fmt.Printf("✓ %-12s %d promised texts, but taller than its own %d — "+
+				"the bottom is cut\n", p.Package, len(p.Want), p.Height)
+			bad++
+			continue
+		}
+		fmt.Printf("✓ %-12s %d promised texts\n", p.Package, len(p.Want))
+	}
+	return bad
+}
+
+// shotsTo writes a PNG of every page into dir, in light and — with dark — in
+// the dark palette too.
+//
+// The promises are checked before the first PNG is rendered, and the run
+// refuses to render at all if any page fell short. A page is a program, not a
+// picture: some of its demos only exist on the frame they are opened on (the
+// overlay page's hover card closes itself with no pointer over it), so a check
+// that runs after a render asks the page to draw something it has already
+// taken back, and fails on a tree where nothing is broken. Refusing to render
+// follows from the same reasoning — a folder holding every page but one is a
+// folder nobody can read as "this is the library".
+func shotsTo(dir string, pages []gallery.Page, dark bool, scale int) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	if bad := checkShots(pages); bad > 0 {
+		return fmt.Errorf("%d pages did not draw what they promised", bad)
+	}
 	for _, p := range pages {
 		for _, d := range []bool{false, true} {
 			if d && !dark {
@@ -117,25 +155,35 @@ func shotsTo(dir string, pages []gallery.Page, dark bool, scale int) {
 			}
 			f, err := os.Create(filepath.Join(dir, name+".png"))
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				return err
 			}
 			if err := png.Encode(f, img); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				f.Close()
+				return err
 			}
 			f.Close()
 			fmt.Printf("✓ %-16s %v\n", name, filepath.Join(dir, name+".png"))
 		}
+	}
+	return nil
+}
+
+// checkShots draws every page once and reports the ones that did not draw what
+// they promised. It says nothing about which page: the run names every page as
+// it writes it, and a page that failed was named there already.
+//
+// Each page is drawn exactly once. It is the only draw the check is entitled
+// to: a page's demos are stateful, and the open state is spent by the frame it
+// first appears on, so a second draw of the same page is not the same page.
+func checkShots(pages []gallery.Page) int {
+	bad := 0
+	for _, p := range pages {
 		if miss := p.Missing(p.Draw()); len(miss) > 0 {
 			fmt.Printf("  ⚠ did not draw %v\n", miss)
 			bad++
 		}
 	}
-	if bad > 0 {
-		fmt.Fprintf(os.Stderr, "%d pages did not draw what they promised\n", bad)
-		os.Exit(1)
-	}
+	return bad
 }
 
 func render(p gallery.Page, dark bool) *image.RGBA {
