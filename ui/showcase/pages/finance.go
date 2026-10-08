@@ -58,7 +58,12 @@ func init() {
 			// quotes
 			"Riverside Clinic", "QuoteCard — 价格最大，涨跌在下面，不在旁边",
 			"+1.25%", "-1.80%", "0.00%", "QuoteList — 表格形式：一行读到底", "Watchlist — 列表形式：价格贴在右边", "Market overview",
-			"Ticker tape", "RIVR on L", "Euro / dollar",
+			// A tape is a painter: its Label is read out by a screen reader and
+			// is never words on the page, and what it does paint is figures
+			// scrolling past, not a name. The line above it is what a person
+			// reads there, so that is what it promises.
+			"TickerTape — 横向滚动的一行数字",
+			"RIVR on L", "Euro / dollar",
 			// the book
 			"Order book", "Bid", "Ask", "Spread 0.03", "bid 101.22, 4,200 shares",
 			"ask 101.25, 3,100 shares", "Depth ladder", "Time and sales",

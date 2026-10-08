@@ -106,16 +106,16 @@ func (p Page) Paint(c *ui.Context) {
 	})
 }
 
-// Draw lays the page out headlessly and reports the text it painted. It calls
-// core.Use first, because that is the library's one hard rule and a page that
-// broke it would be a page that proves nothing.
+// Draw lays the page out headlessly and reports the strings it has reason to
+// believe were painted. It calls core.Use first, because that is the library's
+// one hard rule and a page that broke it would be a page that proves nothing.
 //
-// What it reports is painted text, not every string the engine can point a
-// reader at. Tester.Texts() is the engine's own list of the strings on the
-// page, and it includes the Label an element carries for assistive
-// technology, so it answers "can this be read out" where a Want entry asks
-// "can this be seen". A page of empty labelled boxes is in that list in full
-// and shows a blank window.
+// What it leaves out is everything the engine could point a reader at.
+// Tester.Texts() includes the Label an element carries for assistive
+// technology, so it answers "can this be read out" where a Want entry asks "can
+// this be seen", and a page of empty labelled boxes is in that list in full
+// while showing a blank window. paintedTexts says how much of that it can put
+// right, and how much it cannot; read it before trusting a green gate.
 func (p Page) Draw() []string {
 	tt := ui.NewTester(func(c *ui.Context) {
 		useForShowcase(c)
@@ -124,28 +124,38 @@ func (p Page) Draw() []string {
 	return paintedTexts(tt)
 }
 
-// paintedTexts drops the strings the engine reported that nothing was drawn
-// for.
+// paintedTexts drops the strings the engine reported that were painted nothing,
+// and keeps every other one.
 //
-// MyGo does not say which of its strings were painted and which were only
-// named: an element's text and its label are both unexported and neither has
-// a getter, so the frame is the only place the difference shows. The question
-// asked of each string is therefore whether its box holds a picture — glyphs
-// put pixels of their own into the box they were laid out in — which is a
-// discriminator and not a proof, and its two limits are worth writing down.
+// MyGo v0.2.16 cannot say which of its strings were painted and which were only
+// named: an element's text and its label are both unexported, neither has a
+// getter, and there is no walk over the element tree. The frame is the only place
+// the difference shows, so the question asked of each string is whether its box
+// holds a picture — glyphs put pixels of their own into the box they were laid
+// out in — which is a discriminator and not a proof.
 //
-// The first is the string's other occurrences. Tester.Find returns the box of
-// the first one the engine reported and nothing reaches the rest, so a string
-// reported more than once is taken on the engine's word: a page that captions
-// an image slot "空槽位" beneath the slot of that name is keeping its promise,
-// and the slot's own empty box is the only one this can look at.
+// The rule that ships is therefore a narrow one: a string is dropped only when
+// the engine reported it exactly once and the box it laid out for it turned out
+// to be one flat colour. Everything else stands, for three reasons, and none of
+// them is a property of the page.
 //
-// The second is the box itself. A box this window shows none of — clipped to
-// no width or no height, as content below a section or inside a collapsed one
-// is — cannot be judged from pixels, so its strings are taken on the engine's
-// word too. And a box that varies for some other reason, a border or a
-// gradient or an icon or a sibling's pixels, passes whether or not the string
-// is in it: the label's own box is all there is to look at.
+// The first is a string reported more than once — 53 of them on the display
+// page, 128 on agent. Tester.Find gives the box of the first and nothing reaches
+// the rest, so a repeated string is taken on the engine's word: the display page
+// captions an image slot "空槽位" beneath the slot of that name and does keep its
+// promise, and only the slot's empty box is visible from here. A page author can
+// get past this check by writing the same string down twice.
+//
+// The second is a box this window shows none of, clipped to no width or no height
+// as content inside a collapsed one is; 23 of the promised strings come back that
+// way. There is nothing there to look at, so the engine's word stands.
+//
+// The third is a box that varies for some other reason — a border, a gradient, an
+// icon, a neighbour's pixels, or a component's own marks. A name on a component
+// that paints something passes whether or not it is ever words on the page, which
+// is how the ticker's Label and the waveforms' kept their promises until those
+// two pages were given text to promise instead. The label's own box is all there
+// is to look at.
 func paintedTexts(tt *ui.Tester) []string {
 	reported := tt.Texts()
 	times := map[string]int{}
@@ -191,9 +201,13 @@ func oneColour(img *image.RGBA, box image.Rectangle) bool {
 	return true
 }
 
-// Missing returns the strings in Want that the page did not paint. drawn is
-// what Draw returned, and a Want entry is a promise that a person can see the
-// text, so a string nothing was drawn for does not keep it.
+// Missing returns the strings in Want that Draw did not report as painted, and
+// it is exactly as strong as that report: a promise goes unmet only where the
+// engine named its string once and the box it laid out for it was empty. A
+// promise satisfied by a label on a box with nothing in it does go unmet, which
+// is the case this is here for; a promise satisfied by a label on a component
+// that paints something does not, and cannot from here. drawn is what Draw
+// returned — read paintedTexts before believing a page kept its word.
 func (p Page) Missing(drawn []string) []string {
 	have := map[string]bool{}
 	for _, d := range drawn {

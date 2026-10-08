@@ -81,11 +81,12 @@ func init() {
 			"门诊回放 2024-11-08", "5:12", "1:01", "Voice note from Andre",
 			"Audio 0:42",
 			// sound
-			"Waveform of the intake call", "Waveform of the whole clip, played to the end",
-			// The waveform of nothing is named rather than captioned, and its
-			// name is for a screen reader: a waveform is a painter, so its
-			// Label is never words on the page. The promise for that row is
-			// the line of text under it, which is what a person reads.
+			// All three waveforms are painters, so their three Labels are read
+			// out and never drawn as words; the one line a person reads for
+			// all three is the caption under them, and that is what they
+			// promise. The caption names the third as empty because it is: a
+			// waveform given no samples draws no bars, which is ui/media's to
+			// answer for and not this page's to paper over.
 			"上面三条：0.42 / 1.0 / 什么都没有",
 			"Band levels of the intake call, log axis",
 			"Band levels of the intake call, linear axis",
