@@ -81,8 +81,8 @@ func main() {
 
 // checkGates draws every page and reports how many fell short of what they
 // promised: a page that drew less than it said it would, a page that promises
-// so little that it is not a gallery of its package, and a page taller than the
-// height it declares.
+// so little that it is not a gallery of its package, a page taller than the
+// height it declares, and a page that painted inside its own gutter.
 //
 // It returns the count rather than exiting, so a test can ask the same
 // question this mode asks without ending the test binary on the way out.
@@ -114,6 +114,16 @@ func checkGates(pages []gallery.Page) int {
 			// there on purpose.
 			fmt.Printf("✓ %-12s %d promised texts, but taller than its own %d — "+
 				"the bottom is cut\n", p.Package, len(p.Want), p.Height)
+			bad++
+			continue
+		}
+		if !p.Anchored && GutterFlush(render(p, false)) {
+			// Also not a failure, and skipped for the same reason. But
+			// something left the padding Paint wrapped the page in, so it
+			// reaches the window edge — which in a PNG is the same picture
+			// as a section clipped by it.
+			fmt.Printf("✓ %-12s %d promised texts, but painted inside its own %d-pixel "+
+				"gutter — a section is flush against the window\n", p.Package, len(p.Want), gallery.Gutter)
 			bad++
 			continue
 		}
@@ -266,6 +276,39 @@ func BottomFlush(img *image.RGBA) bool {
 		for x := b.Min.X; x < b.Max.X; x++ {
 			if !near(img.RGBAAt(x, y), bg) {
 				return true
+			}
+		}
+	}
+	return false
+}
+
+// GutterFlush reports whether a page painted inside the margin Page.Paint put
+// around it, which means a section is flush against the window edge.
+//
+// Every page goes through Paint, so both side bands are the one part of a page
+// that ought to be flat. Anything else in them got there by leaving the padding
+// — an absolutely positioned layer, a negative margin — and a picture cannot
+// tell a deliberate flush edge from a clipped one, which is the reason the
+// gutter exists and the reason this is checked rather than assumed.
+//
+// Both bands are read top to bottom rather than sampled as BottomFlush samples
+// rows: the side of a page has no equivalent of the gap between two sections
+// that makes a sampled row come out empty by luck.
+func GutterFlush(img *image.RGBA) bool {
+	b := img.Bounds()
+	bg := img.RGBAAt(b.Min.X, b.Min.Y)
+	for _, band := range [][2]int{
+		{b.Min.X, b.Min.X + gallery.Gutter},
+		{b.Max.X - gallery.Gutter, b.Max.X},
+	} {
+		// A window narrower than two gutters has a band running off its own
+		// edge, and reading past one is a panic rather than a report.
+		x0, x1 := max(band[0], b.Min.X), min(band[1], b.Max.X)
+		for y := b.Min.Y; y < b.Max.Y; y++ {
+			for x := x0; x < x1; x++ {
+				if !near(img.RGBAAt(x, y), bg) {
+					return true
+				}
 			}
 		}
 	}

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"image"
+	"image/color"
 	"io"
 	"os"
 	"path/filepath"
@@ -258,4 +260,59 @@ func TestCheckGatesRejectsAPageThatPromisesNothing(t *testing.T) {
 	if bad := checkGates([]gallery.Page{atFloor}); bad != 0 {
 		t.Errorf("a page at the floor: %d pages failed, want 0", bad)
 	}
+}
+
+// TestGutterFlush is the Page.Gutter guardrail on a synthetic frame rather than
+// on a gallery page. Thirteen of the pages in this tree fail it for real, so
+// what is pinned here is the scan that finds them and not the pages it finds.
+//
+// Each case starts from a blank page and adds exactly one section, because the
+// two answers have to be told apart. A scan that looked anywhere but the two
+// margins would pass the escaping sections and fail the one that respects the
+// gutter; a scan that flagged the whole image would do the reverse.
+func TestGutterFlush(t *testing.T) {
+	const W, H = 200, 100
+	blank := func() *image.RGBA {
+		img := image.NewRGBA(image.Rect(0, 0, W, H))
+		for y := 0; y < H; y++ {
+			for x := 0; x < W; x++ {
+				img.SetRGBA(x, y, color.RGBA{255, 255, 255, 255})
+			}
+		}
+		return img
+	}
+	// A section well clear of both margins: where a page's own content is
+	// supposed to end up.
+	section := func(img *image.RGBA, x0, x1 int) {
+		for y := 40; y < 60; y++ {
+			for x := x0; x < x1; x++ {
+				img.SetRGBA(x, y, color.RGBA{20, 20, 20, 255})
+			}
+		}
+	}
+
+	t.Run("a section that stops short of the margin", func(t *testing.T) {
+		img := blank()
+		section(img, gallery.Gutter+12, W-gallery.Gutter-12)
+		if GutterFlush(img) {
+			t.Error("a section inset past the gutter was reported as flush against the edge")
+		}
+	})
+	// The two edges are checked apart on purpose. They are two bands in one
+	// loop, and a second band at the wrong offset or the wrong width passes
+	// every page in the gallery as long as the pages are flush on the left.
+	t.Run("a section in the left margin", func(t *testing.T) {
+		img := blank()
+		section(img, 4, gallery.Gutter-4)
+		if !GutterFlush(img) {
+			t.Error("a section reaching x=4 was not reported as flush against the edge")
+		}
+	})
+	t.Run("a section in the right margin", func(t *testing.T) {
+		img := blank()
+		section(img, W-gallery.Gutter+4, W-4)
+		if !GutterFlush(img) {
+			t.Error("a section reaching the last 4 columns was not reported as flush against the edge")
+		}
+	})
 }
