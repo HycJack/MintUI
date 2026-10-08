@@ -105,7 +105,7 @@ func Masonry(c *ui.Context, items []MasonryItem, opts MasonryOptions) *ui.Elemen
 	}
 
 	packed := packMasonry(items, columns)
-	build := func() {
+	build := func() *ui.Element {
 		// The row is made here rather than out here, because an element made
 		// before its container is that container's sibling: a masonry built
 		// as a sibling of its own columns is a column of nothing.
@@ -114,6 +114,7 @@ func Masonry(c *ui.Context, items []MasonryItem, opts MasonryOptions) *ui.Elemen
 			row.Width(opts.Width).Shrink(0)
 		}
 		row.Children(func() { masonryColumns(c, packed, track) })
+		return row
 	}
 	if opts.MaxHeight > 0 {
 		// Reusing ui/layout's scroll area rather than a scroll of our own, so
@@ -121,10 +122,12 @@ func Masonry(c *ui.Context, items []MasonryItem, opts MasonryOptions) *ui.Elemen
 		// overscroll as every other long thing in this library.
 		return layout.ScrollArea(c, layout.ScrollAreaOptions{
 			Vertical: true, Height: opts.MaxHeight,
-		}, build).Element
+		}, func() { build() }).Element
 	}
-	build()
-	return nil
+	// The row, not nil: the caller sizes a masonry the way it sizes anything
+	// else, and Masonry(...).Grow(1) on the nil this used to return was a nil
+	// dereference.
+	return build()
 }
 
 // masonryColumns builds the columns inside the host's own Children call,

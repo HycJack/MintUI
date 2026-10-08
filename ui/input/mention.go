@@ -175,7 +175,7 @@ func MentionInput(c *ui.Context, value *string, opts MentionInputOptions) Mentio
 			ui.Column(c).FillWidth().Padding(u * 0.5).Radius(theme.SmallRadius).
 				Background(k.Surface).Children(func() {
 				for _, name := range names {
-					row := optionRow(c, "@"+name, optionFace{Chosen: name == state.highlighted})
+					row := optionRow(c, "@"+name, name, optionFace{Chosen: name == state.highlighted})
 					if row.Clicked() {
 						takeMention(c, value, &r, state, name)
 					}

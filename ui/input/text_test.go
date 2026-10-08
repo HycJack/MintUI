@@ -535,6 +535,29 @@ func TestNumberInputWritesTheNumberItIsGiven(t *testing.T) {
 	}
 }
 
+// "NaN" and "Inf" are the two things ParseFloat accepts without complaint,
+// and neither of them is a number a form can submit. The clamp cannot save
+// either one: every comparison against NaN is false, so it passes both bounds
+// untouched, and a field that writes it has written it into the caller's value
+// for good.
+func TestNumberInputRefusesWhatIsNotANumber(t *testing.T) {
+	for _, what := range []string{"NaN", "Inf"} {
+		t.Run(what, func(t *testing.T) {
+			copies := 5.0
+			tt := fieldTester(480, 140, func(c *ui.Context) {
+				NumberInput(c, &copies, NumberInputOptions{
+					Label: "Copies", Min: bound(1), Max: bound(99), Step: 1,
+				})
+			})
+			emptying(t, tt, "Copies")
+			tt.Type(what)
+			if copies != 5 {
+				t.Errorf("typing %q left the value at %v, want the 5 it had", what, copies)
+			}
+		})
+	}
+}
+
 func TestNumberInputClampsWhatItWritesToItsBounds(t *testing.T) {
 	copies := 1.0
 	tt := fieldTester(480, 140, func(c *ui.Context) {

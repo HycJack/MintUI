@@ -779,6 +779,22 @@ func TestMasonryDrawsEveryItem(t *testing.T) {
 	}
 }
 
+// A masonry is a control like any other, so it hands back what it drew: a nil
+// return meant Masonry(...).Grow(1) was a nil dereference, and nothing in the
+// tests touched the return value. The uncapped path is the one that used to
+// return nil; the capped one has always handed back its scroll area.
+func TestMasonryReturnsAnElementOnItsDefaultPath(t *testing.T) {
+	var el *ui.Element
+	dark(t, core.Light, func(c *ui.Context) {
+		el = Masonry(c, []MasonryItem{
+			{Label: "a", Height: 40}, {Label: "b", Height: 40},
+		}, MasonryOptions{Width: 320})
+	})
+	if el == nil {
+		t.Fatal("Masonry returned nil with MaxHeight unset, so the caller cannot size it")
+	}
+}
+
 func TestMasonryInDarkMode(t *testing.T) {
 	tt := dark(t, core.Dark, func(c *ui.Context) {
 		Masonry(c, []MasonryItem{{Label: "one", Height: 80}}, MasonryOptions{Columns: 2, Column: 120})

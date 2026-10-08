@@ -189,7 +189,7 @@ func FilePicker(c *ui.Context, path *string, entries []FileEntry, opts FilePicke
 					if tip == "" {
 						tip = entry.Path
 					}
-					row := optionRow(c, name, optionFace{}).
+					row := optionRow(c, name, "", optionFace{}).
 						Tooltip(tip).Disabled(entry.Disabled)
 					row.Children(func() {
 						// The mark is a folder or a file, and it is beside the

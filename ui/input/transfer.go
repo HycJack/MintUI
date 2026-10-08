@@ -184,7 +184,7 @@ func transferColumn(c *ui.Context, opts TransferOptions, left, right *[]string, 
 						m = tickOn
 					}
 				}
-				row := optionRow(c, choice.Label, optionFace{Mark: m, Chosen: chosen}).
+				row := optionRow(c, choice.Label, choice.Value, optionFace{Mark: m, Chosen: chosen}).
 					Disabled(opts.Disabled).
 					// The tooltip is the whole name: a column narrower than
 					// its longest choice truncates, and the words cut off are

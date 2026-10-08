@@ -230,7 +230,7 @@ func SelectRow(c *ui.Context, opts SelectRowOptions) *ui.Element {
 	if opts.Selected {
 		f.Mark = checkGlyph
 	}
-	return optionRow(c, opts.Label, f)
+	return optionRow(c, opts.Label, "", f)
 }
 
 // SelectCheck is the tick on a selected row, drawn alone: the two strokes a
@@ -292,7 +292,7 @@ func MultiSelectCheck(c *ui.Context, opts MultiSelectCheckOptions) *ui.Element {
 	if opts.Checked {
 		m = tickOn
 	}
-	return optionRow(c, opts.Label, optionFace{Mark: m, Chosen: opts.Checked, Note: opts.Note})
+	return optionRow(c, opts.Label, "", optionFace{Mark: m, Chosen: opts.Checked, Note: opts.Note})
 }
 
 // SelectSearchOptions configure a SelectSearch.
@@ -359,7 +359,7 @@ func SelectSearch(c *ui.Context, selected, query *string, choices []Choice, opts
 		default:
 			popupList(c, dropdownMaxHeight-core.ControlHeight(c)).Children(func() {
 				for _, ch := range shown {
-					item := optionRow(c, ch.Label, optionFace{Chosen: ch.Value == *selected})
+					item := optionRow(c, ch.Label, ch.Value, optionFace{Chosen: ch.Value == *selected})
 					if item.Clicked() {
 						*selected = ch.Value
 						*open = false
@@ -454,7 +454,7 @@ func MultiSelect(c *ui.Context, selected *[]string, choices []Choice, opts Multi
 				if chosen {
 					m = tickOn
 				}
-				item := optionRow(c, ch.Label, optionFace{Mark: m, Chosen: chosen})
+				item := optionRow(c, ch.Label, ch.Value, optionFace{Mark: m, Chosen: chosen})
 				if !item.Clicked() {
 					continue
 				}
@@ -535,7 +535,7 @@ func Cascader(c *ui.Context, path *[]string, nodes []Node, opts CascaderOptions)
 						// line can be read off the column without counting
 						// columns across.
 						chosen := at < len(*path) && (*path)[at] == n.Value
-						item := optionRow(c, n.Label, optionFace{Chosen: chosen})
+						item := optionRow(c, n.Label, n.Value, optionFace{Chosen: chosen})
 						if !item.Clicked() {
 							continue
 						}

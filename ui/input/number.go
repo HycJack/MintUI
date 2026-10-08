@@ -1,6 +1,7 @@
 package input
 
 import (
+	"math"
 	"strconv"
 	"strings"
 
@@ -472,7 +473,12 @@ func readPlainNumber(s string) (float64, bool) {
 		return 0, false
 	}
 	v, err := strconv.ParseFloat(s, 64)
-	if err != nil {
+	if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
+		// ParseFloat takes "NaN" and "Inf" without complaint, and the clamp
+		// cannot pull either of them back: NaN is less than nothing and more
+		// than everything at once, so it passes both bounds and was written
+		// into the caller's value for good. What is not a number is not a
+		// value, so the pointer is left alone as it is for half a sign.
 		return 0, false
 	}
 	return v, true

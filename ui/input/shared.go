@@ -296,14 +296,26 @@ type optionFace struct {
 // single choice, a search result and a checkbox in a multi-select all read
 // the same.
 //
+// key is the option's own identifier among its siblings, and empty where the
+// caller has none to give. It is what a filtered panel needs: its rows are
+// built in match order, which changes on every keystroke, and a row MyGo
+// identifies by where it sits loses the keyboard to a different option the
+// moment the list moves under it.
+//
 // It is a ButtonBase rather than a plain row, which is the only exported way
 // to get a row that takes presses. The cost is that every option is a stop of
 // Tab, which inside a panel is the point: the panel is a layer the keyboard
 // walks, not something only a pointer can reach.
-func optionRow(c *ui.Context, label string, f optionFace) *ui.Element {
+func optionRow(c *ui.Context, label, key string, f optionFace) *ui.Element {
 	k, u := core.Tokens(c), core.Density(c).Unit()
 	row := ui.ButtonBase(c).FillWidth().Justify(ui.Start).AlignItems(ui.Center).Gap(u).
 		Padding(u*0.75, u*1.5).Radius(theme.SmallRadius).TextColor(k.Text)
+	if key != "" {
+		row = row.Key(key)
+	}
+	// Named on the row and not only on the words inside it: what a reader is
+	// handed, and what a test clicking by name lands on, is the row.
+	row = row.Label(label)
 	// The pointer's own row, read at build time as MyGo's own Link reads its
 	// hover. A panel with no hover reads as a picture rather than as
 	// something to point at, and pointing is how most of its rows get chosen.
