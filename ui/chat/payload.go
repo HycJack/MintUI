@@ -214,7 +214,7 @@ func (r FileMessageResult) Removed() int { return r.removed }
 // because the file is what the turn says. Anything else — a title, a note —
 // is the caller's body, which goes in the same place it would for prose.
 func FileMessage(c *ui.Context, opts FileMessageOptions) FileMessageResult {
-	k, u := core.Tokens(c), core.Density(c).Unit()
+	u := core.Density(c).Unit()
 	if opts.Attachment.Name == "" {
 		panic("chat: FileMessage needs an attachment with a Name")
 	}
@@ -238,7 +238,13 @@ func FileMessage(c *ui.Context, opts FileMessageOptions) FileMessageResult {
 					res.removed = 1
 				}
 				if opts.Caption != "" {
-					ui.Text(c, opts.Caption).TextColor(k.Text).
+					// The caption takes no colour of its own: it is a child of
+					// the bubble, so it inherits the ink the bubble chose. A
+					// caption drawn in the window's text colour is the bubble's
+					// own fill on a filled bubble — the two tokens are the same
+					// colour in the dark palette — and a caption the eye cannot
+					// find is a caption the transcript never said.
+					ui.Text(c, opts.Caption).
 						FontSize(core.FontSize(c, theme.MetaSize))
 				}
 			})

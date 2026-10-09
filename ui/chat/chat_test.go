@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"image"
 	"math"
 	"strings"
 	"testing"
@@ -1601,6 +1602,90 @@ func TestThePaletteIsTheOnlySourceOfColour(t *testing.T) {
 			t.Errorf("token kind %v is the same colour in both appearances", kind)
 		}
 	}
+}
+
+// TestFileMessageCaptionTakesTheBubbleInk is the one place in this package a
+// caption is a child of the filled bubble, so it has to be drawn in the
+// bubble's own ink. Repeating the window's text colour instead paints the
+// caption in the bubble's fill: in the dark palette the two tokens are the
+// same colour, so the caption is not there at all. bubble sets the ink on the
+// box for its children to inherit, which is why a child that sets none takes
+// the right answer and a child that sets the window's does not.
+//
+// The assertion is the contrast the caption reaches against the bubble's fill,
+// compared with the contrast the palette's own bubble ink reaches there — the
+// same way the library holds marks to 3:1 — rather than on a particular hex
+// value, which is the only form of this that survives a palette change.
+func TestFileMessageCaptionTakesTheBubbleInk(t *testing.T) {
+	const caption = "the trace of the failing request"
+	for _, tc := range []struct {
+		mode core.Mode
+		k    theme.Tokens
+	}{
+		{core.Light, theme.Light()},
+		{core.Dark, theme.Dark()},
+	} {
+		mode, k := tc.mode, tc.k
+		t.Run(mode.String(), func(t *testing.T) {
+			tt := ui.NewTester(func(c *ui.Context) {
+				core.Use(c, core.Settings{Mode: mode})
+				FileMessage(c, FileMessageOptions{
+					Role:       RoleUser,
+					Attachment: AttachmentChipOptions{Name: "trace.json", Mark: "file"},
+					Caption:    caption,
+				})
+			}, 560, 220)
+			bg, fg := bubbleInk(RoleUser, k)
+			r, ok := tt.Find(caption)
+			if !ok {
+				t.Fatalf("the caption was not drawn at all; texts were %v", tt.Texts())
+			}
+			want := contrast(fg, bg)
+			if got := strongestContrastIn(tt.Image(), r, bg); got < want-0.5 {
+				t.Errorf("the caption on the filled bubble reaches only %.2f:1 against the bubble, want %.2f:1 as its own ink does",
+					got, want)
+			}
+		})
+	}
+}
+
+// strongestContrastIn is the highest contrast any pixel of r has with bg, which
+// is how much the thing drawn in r stands out from it.
+func strongestContrastIn(frame *image.RGBA, r ui.Rect, bg ui.Color) float64 {
+	best := 0.0
+	for y := int(r.Y); y < int(r.Y+r.H); y++ {
+		for x := int(r.X); x < int(r.X+r.W); x++ {
+			if y < 0 || y >= frame.Bounds().Dy() || x < 0 || x >= frame.Bounds().Dx() {
+				continue
+			}
+			p := frame.RGBAAt(x, y)
+			if cr := contrast(ui.RGBA(p.R, p.G, p.B, float32(p.A)/255), bg); cr > best {
+				best = cr
+			}
+		}
+	}
+	return best
+}
+
+// contrast is the WCAG ratio of two opaque colours, the same ratio every other
+// package in this repository holds its marks to.
+func contrast(a, b ui.Color) float64 {
+	la, lb := luminance(a)+0.05, luminance(b)+0.05
+	if la < lb {
+		la, lb = lb, la
+	}
+	return la / lb
+}
+
+func luminance(c ui.Color) float64 {
+	channel := func(v uint8) float64 {
+		s := float64(v) / 255
+		if s <= 0.03928 {
+			return s / 12.92
+		}
+		return math.Pow((s+0.055)/1.055, 2.4)
+	}
+	return 0.2126*channel(c.R) + 0.7152*channel(c.G) + 0.0722*channel(c.B)
 }
 
 // ── the rest, by kind ──────────────────────────────────────────────────────
