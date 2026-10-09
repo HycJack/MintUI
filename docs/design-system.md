@@ -1050,12 +1050,42 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
   `Choice.Value` 当 key，重复 value 的选项在 `Tester` 下会 panic（MyGo `diagnostics.go:19`
   的 `duplicateKey` 在 `engine.strict` 下 panic），**无任何校验**；`mention.go:178` 用的是
   **显示名**，重名（部门里两个同名的人）比重复 value 更常见。
-- `ui/devtools` `logLevel(l LogLevel) *LogLevel { return &l }` — 返回**帧局部**指针
-  （按值参数的地址），与本批修掉的「状态写进 Options 值拷贝」同形。
-  今天三个调用点都只传常量 `Debug`，所以没人写它；将来若有测试点击级别按钮，
-  会以极难懂的方式失败。
 
-### 21.4 文字缩放还剩两类绕过
+### 21.4 上游的两条承重机制（本库改不了，只能绕）
+
+两条都在 `mygo@v0.2.16`，本批没修也没法修；但下一个动「状态怎么跨帧存」或「浮层怎么响应
+点击」的人，会先撞上它们 —— 而症状和机制之间隔着一整层。
+
+- **`ui.Local` 挂在 window root 上的槽位跨帧也跨趟存活，而 key 已存在时 `init` 不跑** —
+  `ui/context.go:108` 把 root 的 state 取自 `rt.states[1]`（root 的 id 恒为 1，`:104`）；
+  `ui/runtime.go:529-548` 的 `prune` 只删 `seen`/`pass` 对不上的 state，而 root 每趟都被重建
+  （`:339-341` 先 `reset` 再 `view`），`lookState` 又给它盖上当趟的时间戳（`context.go:488`），
+  所以 prune 永远不删它 —— 它的 `locals` 从第一次写入起就在。`ui/context.go:352-356` 在
+  key 已存在时**直接返回存着的那个指针，不调用 `init`**：种子写一次就停在那儿，
+  不会被下一次读取重新初始化。
+  → 影响：想要「每趟重新播种」的效果，就必须在**每趟把种子写回去**，指望它自动重置是反的。
+  本批四个修复都被这三个事实定型 —— `ui/core/state.go:38`（`WithMessages`）与 `:73`
+  （`SetLocal`）必须穿过存着的指针赋值、不能靠 `init`，因为对任何已被读过的 key 那都是
+  静默空转；`:101-102` 的 `setOverride` 同一写法，`WithReducedMotion`（`:115`）与
+  `WithTextScale`（`:135`）走它；`ui/finance/order.go:150-158` 决定每趟写回种子而不是
+  指望重新播种。**下一个改 `ui.Local` 一族辅助函数的人最需要的就是这套机制。**
+- **MyGo 的元素 id 按位置推导，一帧里删掉一个兄弟子树就把后面所有兄弟重新编号** —
+  `ui/context.go:176` 是 `e.id = mix(p.id, uint64(p.nchild)+uint64(k)<<56)`：id 里编的是
+  「在父节点里第几个孩子」，不是稳定的名字。删掉一个孩子，后面每个兄弟下帧拿到新 id，
+  `:178` 就去 `stateFor` 一个全新的 state —— 上一帧记在旧 id 上的那次点击永远读不到。
+  → 本批看得见的症状：画廊 overlay 页上**任何**浮层控件的**第一次**按压都被吞掉、
+  第二次才生效。一次按压同时关掉三个锚定面板、移走三棵兄弟子树；
+  `Popover`/`Popconfirm`/`PopoverRoom` 的 `Modal` 零值就是 false，非模态那条走
+  `ui/overlay/layer.go:131-140` 的 `ui.PopoverBase`、由 MyGo `ui/base.go:469` 的
+  `panel.PressedOutside()` 关闭 —— 所以**一个**开着的非模态锚定层就够。不是按压几何的问题：盒子按压前后字节相同，
+  点击也确实在 `ui/input.go:337` 记了 `s.clicks++`。上游问题，本库改不了，只能绕。
+
+> ⚠️ **别把这一节和 §21.3 已经记的那条上游依赖混为一谈**：那条是 `ui/runtime.go:753-762`
+> 的子树提交无条件（「非模态面板内的按压不会到达页面」压在它上面），讲的是**这一趟怎么把
+> 盒子交出去**；这一节讲的是**状态怎么键控**。两者同在 `mygo@v0.2.16`、升级都会静默失效，
+> 但互不相关，各自的绕法也各走各的。
+
+### 21.5 文字缩放还剩两类绕过
 
 - **RichText span 与 sheet 标题** — `ui/data/card.go:115,116`、`ui/chart/empty.go:64,86`、
   `ui/chart/matrix.go:490`（`p.Text(…, theme.RowSize, …)` 原生绘制调用）、
@@ -1073,7 +1103,7 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
   `ui/datetime/agenda.go:328`（weekday + 日期）与 `ui/datetime/pickers.go:936` 的 `weekCell`。
   这是证据的限制，不是交付缺陷。
 
-### 21.5 零散的小账
+### 21.6 零散的小账
 
 - **`-shots` 的 PNG 逐次不可复现，实测是四页**（连跑两次 `cmp` 全部 22 张）：
   `agent` `chat` `feedback` `finance` 每次都不同，其余 18 页字节相同。
@@ -1095,6 +1125,11 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
 - 19 处 `_test.go` fixture 仍是裸 `FontSize(theme.*)`（`overlay_test.go`×10、
   `navigation_more_test.go`×4、`overlay_new_test.go`×3、两个 `Example` 各 1）。
   fixture 不发布，文字缩放不受影响。
+- `ui/devtools/devtools_test.go:322` 的 `logLevel(l LogLevel) *LogLevel { return &l }` 返回
+  **帧局部**指针（按值参数的地址），与本批修掉的「状态写进 Options 值拷贝」同形。
+  它在 `_test.go` 里、不随库发布，**不是库缺陷** —— 今天三个调用点都只传常量 `Debug`，
+  没人写它。但将来若有测试通过它点击级别按钮，会以极难懂的方式失败；
+  照 `TestLogStreamShowsEveryLine` 的写法改成 `level := Debug` + `Level: &level` 即可。
 - `ui/code` `TestFindQueryTypingActuallyReachesTheCaller`（`code_test.go:985`）用坐标点击而非
   元素点击，因为 bar 与输入框共用 `"Find"` 这个 label。既有命名碰撞。
 - `ui/showcase/page.go:207` 的「empty」弱于实现真正的判据「只有一种纯色」；

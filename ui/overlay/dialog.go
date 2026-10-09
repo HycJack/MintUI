@@ -54,8 +54,8 @@ type DialogOptions struct {
 // Dialog returns nil while closed, and asks for nothing when it is: a modal
 // layer takes part in the layout whether or not it is showing, so one built to
 // be closed spends a frame's layout on a panel nobody can see. The caller who
-// needs the call in the same place as the rest of the view guards it the way
-// internal/board guards ui.Modal.
+// needs the call in the same place as the rest of the view guards it before
+// calling, so that no closed layer ever reaches the layout.
 func Dialog(c *ui.Context, open *bool, opts DialogOptions) *ui.Element {
 	if opts.Body == nil && opts.Actions == nil {
 		// A panel with no content is what a caller gets from forgetting the

@@ -178,7 +178,7 @@ func layer(c *ui.Context, open *bool, modal bool, align ui.Align, build func(bac
 	if !*open {
 		// MyGo lays a modal layer over the window whether or not it is
 		// showing, so asking for a closed one still costs a frame's layout.
-		// This is the same guard internal/board keeps before ui.Modal.
+		// Callers guard the call themselves; Dialog says the same thing.
 		return nil
 	}
 
