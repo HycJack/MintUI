@@ -1,13 +1,14 @@
 # 原生版 UI 设计规范
 
-适用对象：`ui/` 组件库 + `internal/board/`（业务组装层，MyGo 原生 UI，无 WebView）。
+适用对象：`ui/` 组件库本身（MyGo 原生控件，无 WebView）。**本仓库没有业务组装层** ——
+组装示范由 `cmd/gallery` 承担，每个包一页，见 §20。
 
 代码里的每个取值都来自 `ui/theme/`，本文与它一一对应 —— 改设计改 `ui/theme/theme.go`，
 本文跟着改。组件本身的规范在 `ui/<domain>/doc.go`，本文只说**为什么这样设计**，
 以及每条规则落在哪个组件上（见 §14）。
 
-配套的 WebView 版（`web/assets/app.css`）视觉基准相同，本文的「与 WebView 版的差异」一节说明
-两版**允许**不一样的地方。
+配套的 WebView 版视觉基准相同（那份代码不在本仓库里），本文的「与 WebView 版的差异」
+一节说明两版**允许**不一样的地方。
 
 ---
 
@@ -82,6 +83,13 @@
 判深浅用 `Tokens.IsDark()`，实现是看背景的相对亮度落在 0.5 的哪一侧 —— 比的是**亮度**，
 不是跟某一份调色板的身份是否相同。所以一份背景不是 `#ffffff` 的浅色调色板（品牌米白之类）
 不会被误判成深色。
+
+那个 0.5 是**线性相对亮度**上的，不是 8 位数值上的：亮度曲线是 WCAG 对 sRGB 的那条，
+所以按数值一半的中灰 `#808080` 只有 0.216，**被判成深色**；真正的分界在 `#bcbcbc` 附近。
+这是刻度决定的，不是刻度写错了：分界那一带两种墨色都还读得出来（`#808080` 上
+浅色主题的 `#18181b` 有 4.49:1、深色主题的 `#f4f4f5` 有 3.59:1），所以判成哪边都不会读不出来。
+两套已发布的色板离这条线都很远（`#ffffff` 是 1.000，`#111113` 是 0.006）。
+判定由 `TestIsDarkComparesLuminanceNotIdentity` 钉住，包括 `#808080` 这一格。
 
 ---
 
@@ -364,12 +372,14 @@ toast 那一行跟主内容抢高度，把整块板挤扁了。这是实际踩�
 ## 13. 怎么验证
 
 ```bash
-go test ./internal/board/     # 16 个无头渲染测试
-go run ./cmd/snapshots -out shots   # 导出 PNG
+go test ./... -count=1           # 全库无头渲染测试
+go run ./cmd/gallery -check     # 每页画了什么；边距与底部有没有被切
+go run ./cmd/gallery -shots out # 每页导出一张 PNG
 ```
 
 截图用的是 MyGo 自己的渲染器（`ui.Tester.Image()`），不开窗口、不需要 macOS，
-所以改完 UI 立刻能看效果。上面每一条反模式都是被这套流程抓出来的。
+所以改完 UI 立刻能看效果。`cmd/gallery` 就是这套流程的命令行入口：
+`-check` 回答「有没有画少」，`-shots` 给出可以看的图，两者走的是同一批页面代码。
 ---
 
 ## 14. 组件 API 与实现位置
@@ -388,7 +398,9 @@ go run ./cmd/snapshots -out shots   # 导出 PNG
 | `ui/layout` | 窗口的骨架 | `PageHeader`、`Board`、`Column` | 数据 |
 | `ui/data` | 一条记录长什么样 | `Card`、`Stat`、`StatLine` | 记录的业务含义 |
 | `ui/feedback` | 应用**说**而不是**展示** | `Empty`、`Toast` | 视图 |
-| `internal/board` | 业务组装 | callbacks 数据、交互状态、模态 | 任何绘制原语 |
+
+组件库到 `ui/theme` 为止。**没有组装层**：本仓库不产出应用，所以没有哪一层把组件拼成
+一块板；把组件放在一起给人看的那个程序是 `cmd/gallery`，见 §20。
 
 ### 14.2 调用形态
 
@@ -679,26 +691,20 @@ k, u := core.Tokens(c), core.Density(c).Unit()   // 调色板 + 间距一步
 ### 14.4 测试怎么覆盖
 
 ```bash
-go test ./...                                 # 全库，每个组件一个测试文件
-go run ./cmd/snapshots -out shots -scale 2   # 真实原生渲染的 PNG
+go test ./... -count=1                    # 全库，每个组件一个测试文件
+go run ./cmd/gallery -shots out -scale 2  # 真实原生渲染的 PNG
 ```
 
-- **每个组件一个无头渲染测试**，用 `ui.NewTester` 断言看得见的文字和
+- **每个组件一个 `_test.go`**，用 `ui.NewTester` 无头渲染，断言看得见的文字和
   布局结果，不断言内部字段。
 - **纯函数必须有精确断言**：`Rows` 的稳定排序、`Ticks` 的刻度位置、
   `Match` 的排序、`Sanitize` 的清洗结果、`HumanSize` 的边界 ——
   断言具体值，不是「大于 0」。
 - **断言捕获的变量，不断言点击后画出的文字**，原因见 §17.2。
-- **对比度由 `ui/theme/theme_test.go` 守着**：正文 4.5:1、状态药丸 4.5:1、
+- **对比度由 `ui/theme/theme_test.go` 守着**：正文 4.5:1（`Background` / `Surface` /
+  `SurfaceHover` / `SurfacePressed` / `Fill` 一视同仁）、记号 3:1、状态药丸 4.5:1、
   边框 ≤ 2:1。改色值不用靠眼睛比截图。
-- **每个包一个 `example_<pkg>_test.go`**，都是能跑的示例。
-
-
-- **每个组件一个 `_test.go`**，用 `ui.NewTester` 无头渲染，断言看得见的文字和
-  布局结果，不断言内部字段。
 - **每个包一个 `example_<pkg>_test.go`**，都是能跑的示例，同时是这一页的活文档。
-- **对比度由 `ui/theme/theme_test.go` 守着**：正文 4.5:1、状态药丸 4.5:1、边框 ≤ 2:1。
-  改色值不用靠眼睛比截图。
 - **拖拽必须分步移动**：一步跳过去不算拖拽（见 `TestColumnDropsValues` 里的 `drag`）。
 
 ---
@@ -909,15 +915,20 @@ return e.Width(theme.BorderWidth).FillHeight()
 | 护栏 | 抓什么 |
 |---|---|
 | `Page.Missing` | 承诺的文字没画出来 |
-| `Page.Gutter`（28px） | 任何 `FillWidth` 的小节都不得贴到页面边上 —— 贴边和被裁在图上长得一样 |
+| `Page.Gutter`（28px） | 左右两条 28 像素的边里不许出现任何一个不是背景色的像素 —— 有东西离开了 `Paint` 给整页加的那层内边距，贴边和被裁在图上长得一样 |
 | `BottomFlush` | 页面最后 60 像素里有内容 = 这一页比自己声明的高，底部被切了 |
-| `Page.Anchored` | 贴窗口边的层（底栏、抽屉）让上面那条测不了，只能由作者自己声明 |
+| `Page.Anchored` | 贴窗口边的层（底栏、抽屉）让上面两条测不了，只能由作者自己声明 |
+
+`Gutter` 是 `Page` 上真实存在的一个常量，`GutterFlush` 是 `cmd/gallery` 里未导出的那一个
+检查：它不认「小节」，只认像素 —— 左右两条边带各自**整条**从上往下扫，不是采样几行。
+侧边没有「恰好落进两小节之间那个空隙」的运气，所以采样在这里是不成立的。
 
 ### 20.1 `Height` 由 `-fit` 给，不要手写
 
 ```bash
 go run ./cmd/gallery -fit      # 每页需要多高
 go run ./cmd/gallery -check    # 校验；报 "the bottom is cut" 就是 Height 写小了
+go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，-scale 2 放大）
 ```
 
 `-fit` 从页面**自己声明的高度**往上找，不是从 240 二分。
@@ -932,4 +943,151 @@ go run ./cmd/gallery -check    # 校验；报 "the bottom is cut" 就是 Height 
 ### 20.3 这套护栏抓到过什么
 
 这一轮的四个 bug（竖线 0 像素、表格列贴在一起、表格宽度小于列宽之和、
-页面整体贴边）全部是 `-check` 全绿、870 个测试全绿的情况下，靠看图发现的。
+页面整体贴边）全部是 `-check` 全绿、**1780 个测试**（1452 个顶层 `Test` + 51 个 `Example`
++ 277 个子测试，`go test ./... -count=1 -v | grep -c '^=== RUN'` 数出来的）全绿的情况下，
+靠看图发现的。
+
+### 20.4 `-check` 现在是红的，这是对的
+
+批次 0 把 `Gutter` 那条护栏真正接上之后，`-check` 在干净树上 exit 1，
+报 13 个页面「painted inside its own 28-pixel gutter」。**这是护栏第一次说真话，不是回归**：
+在那之前这一栏根本不存在，所以谁也不知道这些页贴边。不要为了让 `-check` 变绿而删掉或放宽它。
+逐条清单在 §21.1。
+
+---
+
+## 21. 已知未修（批次 0 之后）
+
+批次 0 做的事是「让项目自己的质量门禁可信」：把护栏接上、把两种外观真的渲染一遍、
+把审核里定为 Critical / Important 的缺陷修掉。下面是它**没有**做的事，写在这里是为了让
+下一批不必重跑一遍审核。每条一行：`位置 — 问题 — 影响`。
+
+### 21.1 `-check` 现在报出来的
+
+- `cmd/gallery -check`（干净树，exit 1）— 13 页报「painted inside its own 28-pixel gutter」：
+  `account agent chat code datetime devtools feedback files finance git layout media messaging`；
+  另有 2 页标了 `Anchored`（`input` `overlay`）按设计跳过这两条检查，
+  但逐边扫描它们的 PNG **同样违规**，合计 15/22 — 贴边是这批页面共同的问题，
+  `-check` 的红是真的，别去放宽它。
+- **成因在右边，不在左边**（拿 `-shots` 的 PNG 逐边扫出来的，不要逐页打地鼠）：
+  22 页里左边距干净的有 16 页，15 个违规者里 **9 个只违规右边**、1 个只违规左边（`layout`）、
+  5 个两边都违规。一个左右这么不对称的分布指向同一个系统性成因 ——
+  找它，不要一页一页改。
+- `ui/media` `AudioWaveformOptions.Samples`（`audio.go:203`）— 文档承诺「nil 画的是那条平躺的
+  静止轨道」，实现是 `Peaks(nil, bars)` 返回全零高度（`audio.go:125`）而每条的高度就是那个值，
+  于是**一条都不画** — media 页第三条波形今天是一条空白盒子，
+  而且门禁抓不到它（波形盒子里没有字）。
+
+### 21.2 门禁自己的盲区（已知它会放过什么）
+
+- `ui/showcase/page.go` 的 `paintedTexts` — 对「同一字符串被引擎报告多次」一律按引擎的话信，
+  所以同一页把一个字符串写两遍就能绕过 `Want`；按 `page.go` 自己的注释，display 页上有 53 个
+  字符串、agent 页上有 128 个落在这一档。
+- 同一个函数的判别是**像素相等性**，不是「真的画了字」：浅色下两个颜色差一两个单位就算「不同」；
+  而且一个挂在「画了别的东西」的盒子上的名字会无条件通过。
+  → 影响：`ui/chat/payload.go:241` `FileMessage` 的 caption 用 `k.Text` 而不是气泡自己的墨色，
+  落在 `RoleUser` 的填充气泡（`k.Fill`）上。实测对比度浅色 1.02:1、深色 1.00:1
+  （深色下 `k.Text` 与 `k.Fill` **都是 `#f4f4f5`**）—— 两套外观下都读不出来，
+  却同时满足 `Want` 和 `TestPagesDrawInBothAppearances`。**未修。**
+  同一条豁免今天已经在放过别的名字：逐页跑一遍 `paintedTexts` 的判别，两种外观下被剔除的字符串
+  是 account 3、code 14、git 2、input 5、media 2、messaging 2，以及 chat 深色 1
+  （即上面那条 caption）；`finance` 上的 `"Market overview"`（`finance.go:272`）是一个
+  `DataTable` 的 `Label`，它满足 `Want` 靠的是表格盒子里画满了行，不是靠这几个字被画出来。
+- `TestPagesDrawInBothAppearances` 数的是引擎报告的 `Texts()`，不是 `paintedTexts`，
+  而 `paintedTexts` 未导出、这个包够不着 → 上面那条缺陷正是它看不见的那一类。
+- `GutterFlush` 读的是每页的**第三次**绘制，而 `checkShots` 自己的注释说「同一页的第二次绘制
+  不是同一页」 → 方向是偏假阴性，所以 13 是**低估**不是高估。
+- `cmd/gallery/window_test.go:273` 的 `TestGutterFlush` — 它只证明边带宽度落在 24–40 之间
+  （x=4..24 被判贴边，x=40..W-40 不判），没钉死恰好 28 → 13 页这个名单依赖的正是这个
+  精确阈值，一个宽度 40 的实现能过全部子测试却会换掉名单。
+- `checkGates` 里 `BottomFlush` 分支 `continue`，同一页同时有两种问题时只报前者 →
+  今天没有任何页触发 `BottomFlush`，所以还没藏住东西；一旦有就会藏。
+- `GutterFlush` 的背景取样点 `(Min.X, Min.Y)` 在被扫描的边带之内 → 全出血绘制会污染取样
+  并掩盖同色像素。
+- 门禁不再看守 painter 自身：磁带与波形的 `Want` 改成 caption 之后（它们是滚动数字，
+  可见哪几个取决于滚动位置，没法用承诺字符串覆盖），磁带/波形画空不再被抓。
+- `checkGates` 每页绘三次（`Draw` 一次、`BottomFlush` 一次、`GutterFlush` 一次）→
+  `-check` 实测 2.34s，`-shots`（含逐页校验与 22 张 PNG 的编码）10.82s。
+
+### 21.3 库里的真实缺陷（审核评为 Important，本批未修）
+
+- `ui/navigation/tabs.go:343` `windowAround` 与 `:276` `Pagination` — 同一个文件里，
+  `total <= 0` 一个静默返回 `nil`、另一个 panic；同一条件两套策略，相隔 67 行。
+  → 影响：调用方拿到 `nil` 之后才崩，报错点离原因很远。
+- `ui/overlay/dialog.go:189` — 文档说「Escape **和遮罩点击**都选中标着 Cancel 的按钮」，
+  而 `layer.go:58` 的遮罩点击只做 `*open = false`，从不设 `Chosen()` →
+  影响：一次遮罩点击关掉了 alert，而 `Chosen()` 报 `-1`。`Chosen()` 的 `-1` 与
+  「没有 Cancel 就不能这样关掉」都已在 `dialog.go:157`、`:178`、`:191` 写明，
+  但 `:189` 那半句仍说多了 —— 按名字匹配意味着 `Actions: {"Keep","Not now"}` 的调用方
+  得不到任何按钮，也得不到任何提示。既有缺陷，未修。
+- `ui/overlay/layer.go:38` — 构造了一个 backdrop，`:48` 的 `anchor != ui.Center` 分支立刻丢弃它。
+- `ui/overlay/layer.go:48` — Drawer（`anchor != ui.Center`）那条分支**无测试覆盖**，
+  而它自带一次 `barrier(...)` 调用，正是容易漏掉 `PassThrough` 的地方。
+- 「非模态面板内的按压不会到达页面」这个承重假设**未被任何测试钉住** ——
+  它依赖 MyGo `runtime.go:753-762` 的子树提交是无条件的（两个循环都没有条件判断），
+  MyGo 一升级就会静默失效。
+- `ui/datetime` `ParseDurationText`（`format.go:317`）— 累加时没有任何溢出守卫，
+  `"10000000000s"` 静默回绕成 `-2346317h47m53.709551616s` 且 `error` 为 nil（实测）。
+- `ui/datetime` `format.go` — 输出对「一个单位 + 亚毫秒余数」这一族 ≥1ms 的输入
+  **不再字节稳定**（`1.5ms`、`1s+1ns`、`45s+999ns`、`2h+3ns` 都会变长）；没有一个原本正确的
+  输出变差（变长的那些此前都是有损的），但任何依赖字节相等的调用方会看到。
+- `ui/datetime` `format.go:263` — 注释说旧 bug「came out as an empty string rather than as
+  nothing at all」，而 `:269` 的规则正是「零是 `"0m"`，因为空串读起来像缺失值」——
+  空串**就是**「什么都没有」读起来的样子，那句话把规则说反了。同一函数的 `:331` 让
+  `num == ""` 一符两义（既表示没匹配到双字节后缀，也表示匹配到了但这段就是裸单位），
+  今天靠后面的 `Atoi` 兜住，解析器重写时是脆弱的那部分。
+- `ui/input` `optionRow` 的 `Key` — `transfer.go:187`、`select.go:362/457/538` 用
+  `Choice.Value` 当 key，重复 value 的选项在 `Tester` 下会 panic（MyGo `diagnostics.go:19`
+  的 `duplicateKey` 在 `engine.strict` 下 panic），**无任何校验**；`mention.go:178` 用的是
+  **显示名**，重名（部门里两个同名的人）比重复 value 更常见。
+- `ui/devtools` `logLevel(l LogLevel) *LogLevel { return &l }` — 返回**帧局部**指针
+  （按值参数的地址），与本批修掉的「状态写进 Options 值拷贝」同形。
+  今天三个调用点都只传常量 `Debug`，所以没人写它；将来若有测试点击级别按钮，
+  会以极难懂的方式失败。
+
+### 21.4 文字缩放还剩两类绕过
+
+- **RichText span 与 sheet 标题** — `ui/data/card.go:115,116`、`ui/chart/empty.go:64,86`、
+  `ui/chart/matrix.go:495`（`p.Text(…, theme.RowSize, …)` 原生绘制调用）、
+  `ui/overlay/dialog.go:145,234`、`drawer.go:53`、`ui/agent/request.go:349,546`、
+  `ui/finance/quote.go:397` → 影响：用户把桌面字号设成 150% 时这些文字不跟着缩放。
+  先定义「span 的尺寸」「sheet 标题的尺寸」是什么，才能决定怎么包 —— 这是待裁决，不是待扫。
+- **图标尺寸** — `ui/navigation/rail.go:72`、`menubar.go:324,340`、`sidebar.go:240,293`、
+  `toolbar_more.go:114`（直接用 `theme.IconSize`），以及拿别的大小当图标尺寸的
+  `ui/code/panels.go:305`（`theme.CaptionSize*1.3`）、`viewer.go:179`（`theme.RowSize*1.5`）。
+  图标尺寸与文字尺寸是两个问题，扫完上面那批也不算完。
+- `core.ControlHeight` 不随缩放 — **这是正确的保留**：它是全库所有控件高度派生自的唯一数字，
+  改它会重新推导整套密度与几何测试。但它正是消解上面两条风险的**前置条件**，下一轮首项。
+- `TextScale > 1` 下没有任何测量：画廊没有这个 flag，缩放后的布局风险**未被测量**。
+  点名的两处是同一个形状 —— **固定 36 DIP（`u * 9`）的格子里叠两行会缩放的文字**：
+  `ui/datetime/agenda.go:329`（weekday + 日期）与 `ui/datetime/pickers.go:936` 的 `weekCell`。
+  这是证据的限制，不是交付缺陷。
+
+### 21.5 零散的小账
+
+- **`-shots` 的 PNG 逐次不可复现，实测是四页**（连跑两次 `cmp` 全部 22 张）：
+  `agent` `chat` `feedback` `finance` 每次都不同，其余 18 页字节相同。
+  门禁那一趟不受影响（减弱动效下磁带静止），但出图不是确定的 → 做像素回归的人要先知道这件事。
+- `HoverCard` / `UserProfileCard` 在画廊里**已无演示**（为让两页通过确定性门禁而不再画常开的浮层）
+  → 补法是每页约 30 行的指针驱动截图，`Tester.Move` + `messagingStatusEditorShot`（`messaging.go:399`）
+  是既有模式。
+- label-only 承诺的规模远大于已修的 4 条：`finance.go:272` 的 `"Market overview"`、
+  media 的两条 `AudioSpectrum` 标签，以及更下方的 `MicLevelMeter`/scrubber/lightbox 的名字，
+  全靠「挂在一个画满了东西的盒子上」这条豁免存活（见 §21.2）。
+- `ui/core/state.go:46` 的 `Messages` 文档称「never nil」，修复后 `WithMessages(c, nil)` 可达该状态
+  （无害：读 nil map 合法、`Msg` nil-safe、全库无 `Messages` 的生产调用者）。
+- `ui/core/state.go:42-44` 有一段悬空文档注释，描述一个**全库不存在**的 `msgMap` 函数
+  （既有债，就在本批修的函数正上方）。
+- 两处画廊色板仍是旧值：`ui/showcase/pages/account.go:702`（旧深色 `TextFaint` `#71717a`）、
+  `ui/showcase/pages/input.go:502`（旧浅色 `TextMuted` `#6b6b74`）。
+- 两处 `Example` 仍在教裸 `FontSize(theme.X)`：`ui/overlay/example_overlay_test.go:65`、
+  `ui/data/example_data_test.go:30`。生产代码里已经没有了（全库 `grep` 只剩这一处注释）。
+- 19 处 `_test.go` fixture 仍是裸 `FontSize(theme.*)`（`overlay_test.go`×10、
+  `navigation_more_test.go`×4、`overlay_new_test.go`×3、两个 `Example` 各 1）。
+  fixture 不发布，文字缩放不受影响。
+- `ui/code` `TestFindQueryTypingActuallyReachesTheCaller`（`code_test.go:985`）用坐标点击而非
+  元素点击，因为 bar 与输入框共用 `"Find"` 这个 label。既有命名碰撞。
+- `ui/showcase/page.go:206` 的「empty」弱于实现真正的判据「只有一种纯色」；
+  `Missing` 的强度就是 `paintedTexts` 的强度，读 `Draw()` 的人需要先读它。
+- **本文档自己的债**：§16 的实现进度表已过期（「其余 14 个包 | 待实现」—— 现在 22 个包都有
+  画廊页）。本批没改它：要重写这张表得先裁决「完整」的判定标准，那是一次裁决，不是同步。
