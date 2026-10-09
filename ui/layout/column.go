@@ -76,18 +76,18 @@ func Column[T any](c *ui.Context, opts ColumnOptions[T], body func()) ColumnResu
 
 	col.Children(func() {
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Padding(u/2, u, 0, u).Children(func() {
-			ui.Text(c, opts.Title).TextColor(k.Text).FontSize(theme.RowSize).Bold().
+			ui.Text(c, opts.Title).TextColor(k.Text).FontSize(core.FontSize(c, theme.RowSize)).Bold().
 				Grow(1).SingleLine()
 			if opts.Count != nil {
 				ui.Box(c).Padding(u*0.75, u*2.25, u*0.75, u*2.25).Radius(theme.PillRadius).
 					Background(k.Border).Children(func() {
-					ui.Text(c, itoa(*opts.Count)).TextColor(k.TextMuted).FontSize(theme.CaptionSize).Bold()
+					ui.Text(c, itoa(*opts.Count)).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.CaptionSize)).Bold()
 				})
 			}
 			if opts.Menu != "" {
 				ui.Box(c).Size(u*9.5, u*9.5).Radius(u * 4.75).Background(k.Background).
 					Center().Label(opts.Menu).Children(func() {
-					ui.Text(c, "⋯").TextColor(k.Text).FontSize(theme.RowSize)
+					ui.Text(c, "⋯").TextColor(k.Text).FontSize(core.FontSize(c, theme.RowSize))
 				})
 			}
 		})
@@ -101,7 +101,7 @@ func Column[T any](c *ui.Context, opts ColumnOptions[T], body func()) ColumnResu
 		if opts.More != "" {
 			more := ui.Row(c).FillWidth().Height(u * 12).Radius(theme.CardRadius).
 				Background(k.Border).Center().Label(opts.More).Children(func() {
-				ui.Text(c, opts.More).TextColor(k.TextMuted).FontSize(theme.RowSize)
+				ui.Text(c, opts.More).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.RowSize))
 			})
 			r.revealed = more.Clicked()
 		}

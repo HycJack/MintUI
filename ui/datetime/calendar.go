@@ -116,7 +116,7 @@ func Calendar(c *ui.Context, opts CalendarOptions) CalendarResult {
 				if stepButton(c, iconPrev, prev, core.ControlHeight(c)).Clicked() {
 					r.stepped = -1
 				}
-				ui.Text(c, title(month)).TextColor(k.Text).FontSize(theme.RowSize).
+				ui.Text(c, title(month)).TextColor(k.Text).FontSize(core.FontSize(c, theme.RowSize)).
 					Bold().Grow(1).TextAlign(ui.Center).SingleLine()
 				if stepButton(c, iconNext, next, core.ControlHeight(c)).Clicked() {
 					r.stepped = 1
@@ -134,7 +134,7 @@ func Calendar(c *ui.Context, opts CalendarOptions) CalendarResult {
 					Padding(0, u*3).Background(k.Surface).TextColor(k.Text).
 					Label(name).Tooltip(name)
 				btn.Children(func() {
-					ui.Text(c, name).FontSize(theme.CaptionSize)
+					ui.Text(c, name).FontSize(core.FontSize(c, theme.CaptionSize))
 				})
 				r.home = btn.Clicked()
 			}

@@ -210,7 +210,7 @@ func RecurrenceEditor(c *ui.Context, opts RecurrenceEditorOptions) RecurrenceEdi
 	r.Element = ui.Column(c).FillWidth().Gap(u * 1.5).Label(name).Children(func() {
 		ui.Row(c).FillWidth().Gap(u * 1.5).Children(func() {
 			ui.Text(c, core.Msg(c, "datetime.repeats", "Repeats")).TextColor(k.TextMuted).
-				FontSize(theme.CaptionSize)
+				FontSize(core.FontSize(c, theme.CaptionSize))
 			// Frequency is a row of buttons rather than a menu: there are six
 			// of them and they are the whole point of the control, and a
 			// person choosing "weekly" should not have to open something to
@@ -226,7 +226,7 @@ func RecurrenceEditor(c *ui.Context, opts RecurrenceEditorOptions) RecurrenceEdi
 				btn := ui.Button(c, "").Grow(1).Height(core.ControlHeight(c)).
 					Radius(theme.PillRadius).Background(bg).TextColor(fg).
 					Label(name + " " + label).Children(func() {
-					ui.Text(c, label).TextColor(fg).FontSize(theme.CaptionSize).SingleLine()
+					ui.Text(c, label).TextColor(fg).FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 				})
 				if btn.Clicked() {
 					rule.Frequency = f
@@ -240,7 +240,7 @@ func RecurrenceEditor(c *ui.Context, opts RecurrenceEditorOptions) RecurrenceEdi
 		if len(intervals) > 1 {
 			ui.Row(c).FillWidth().Gap(u * 1.5).Children(func() {
 				ui.Text(c, core.Msg(c, "datetime.every", "Every")).TextColor(k.TextMuted).
-					FontSize(theme.CaptionSize)
+					FontSize(core.FontSize(c, theme.CaptionSize))
 				for _, n := range intervals {
 					n := n
 					on := rule.step() == n
@@ -251,7 +251,7 @@ func RecurrenceEditor(c *ui.Context, opts RecurrenceEditorOptions) RecurrenceEdi
 					btn := ui.Button(c, "").Grow(1).Height(u * 8).
 						Radius(theme.SmallRadius).Background(bg).TextColor(fg).
 						Label(itoa(n)).Children(func() {
-						ui.Text(c, itoa(n)).TextColor(fg).FontSize(theme.CaptionSize)
+						ui.Text(c, itoa(n)).TextColor(fg).FontSize(core.FontSize(c, theme.CaptionSize))
 					})
 					if btn.Clicked() {
 						rule.Interval = n
@@ -276,7 +276,7 @@ func RecurrenceEditor(c *ui.Context, opts RecurrenceEditorOptions) RecurrenceEdi
 						Radius(theme.SmallRadius).Background(bg).TextColor(fg).
 						Label(WeekdayFullNames[i]).
 						Children(func() {
-							ui.Text(c, names[i]).TextColor(fg).FontSize(theme.CaptionSize).SingleLine()
+							ui.Text(c, names[i]).TextColor(fg).FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 						})
 					if btn.Clicked() {
 						rule.Weekdays[i] = !rule.Weekdays[i]
@@ -289,14 +289,14 @@ func RecurrenceEditor(c *ui.Context, opts RecurrenceEditorOptions) RecurrenceEdi
 			ui.Box(c).FillWidth().Radius(theme.ControlRadius).Background(k.Surface).
 				Padding(u, u*2).Label(custom).Children(func() {
 				ui.Text(c, rule.Custom).TextColor(k.Text).
-					FontSize(theme.RowSize).FontFeatures("tnum").SingleLine()
+					FontSize(core.FontSize(c, theme.RowSize)).FontFeatures("tnum").SingleLine()
 			})
 		}
 		// The sentence is drawn under the controls, always. It is the only
 		// place the whole rule is visible at once, and a rule that cannot be
 		// read back is a rule nobody checked.
 		ui.Text(c, RecurrenceSummary(rule)).TextColor(k.TextMuted).
-			FontSize(theme.CaptionSize).SingleLine()
+			FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 	})
 	*opts.Rule = rule
 	return r
@@ -604,7 +604,7 @@ func CronEditor(c *ui.Context, opts CronEditorOptions) CronEditorResult {
 			row := row
 			ui.Column(c).FillWidth().Gap(u / 2).Label(names[row]).Children(func() {
 				ui.Text(c, names[row]).TextColor(k.TextMuted).
-					FontSize(theme.CaptionSize).SingleLine()
+					FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 				// The strip wraps: Minute is sixty chips, and one row of
 				// them ran off the page's right edge, cutting the last chip
 				// in half and dropping the rest of the hour.
@@ -620,7 +620,7 @@ func CronEditor(c *ui.Context, opts CronEditorOptions) CronEditorResult {
 						btn := ui.Button(c, "").MinWidth(MinCellSize).
 							Height(u * 8).Radius(theme.SmallRadius).
 							Background(bg).TextColor(fg).Label(label).Children(func() {
-							ui.Text(c, label).TextColor(fg).FontSize(theme.CaptionSize)
+							ui.Text(c, label).TextColor(fg).FontSize(core.FontSize(c, theme.CaptionSize))
 						})
 						if btn.Clicked() {
 							chosen[row] = v
@@ -652,7 +652,7 @@ func CronEditor(c *ui.Context, opts CronEditorOptions) CronEditorResult {
 		if r.err != nil {
 			colour = k.Danger
 		}
-		ui.Text(c, summary).TextColor(colour).FontSize(theme.CaptionSize).SingleLine()
+		ui.Text(c, summary).TextColor(colour).FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 	})
 	return r
 }

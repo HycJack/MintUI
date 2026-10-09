@@ -96,10 +96,10 @@ func CalendarDayView(c *ui.Context, opts CalendarDayViewOptions) CalendarDayView
 			}
 			ui.Column(c).Grow(1).Children(func() {
 				ui.Text(c, WeekdayFullName(day)).TextColor(k.Text).
-					FontSize(theme.RowSize).Bold().SingleLine()
+					FontSize(core.FontSize(c, theme.RowSize)).Bold().SingleLine()
 				ui.Text(c, itoa(day.Day())+" "+months[monthIndex(day)]+" "+
 					itoa(day.Year())).TextColor(k.TextMuted).
-					FontSize(theme.CaptionSize).SingleLine()
+					FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 			})
 			if stepButton(c, iconNext, next, core.ControlHeight(c)).Clicked() {
 				r.stepped = 1
@@ -151,7 +151,7 @@ func hourRuler(c *ui.Context, start, end int, hourHeight float32, head bool) {
 		}
 		for hour := start; hour < end; hour++ {
 			ui.Text(c, HourLabel(hour)).TextColor(k.TextFaint).
-				FontSize(theme.CaptionSize).Height(hourHeight).
+				FontSize(core.FontSize(c, theme.CaptionSize)).Height(hourHeight).
 				TextAlign(ui.End).SingleLine()
 		}
 	})
@@ -262,7 +262,7 @@ func CalendarWeekView(c *ui.Context, opts CalendarWeekViewOptions) CalendarWeekV
 	r.Element = ui.Column(c).FillWidth().FillHeight().Gap(u * 1.5).Children(func() {
 		if opts.Title {
 			ui.Text(c, WeekViewTitle(opts.Day, months)).TextColor(k.Text).
-				FontSize(theme.RowSize).Bold().SingleLine()
+				FontSize(core.FontSize(c, theme.RowSize)).Bold().SingleLine()
 		}
 		if opts.AllDay {
 			// The all-day row spans the whole week: an all-day event belongs
@@ -300,9 +300,9 @@ func CalendarWeekView(c *ui.Context, opts CalendarWeekViewOptions) CalendarWeekV
 							Label(dayNameOf(day, months)).
 							Children(func() {
 								ui.Text(c, weekdays[Weekday(day)]).TextColor(k.TextMuted).
-									FontSize(theme.CaptionSize).SingleLine()
+									FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 								ui.Text(c, itoa(day.Day())).TextColor(fg).
-									FontSize(theme.RowSize).Bold().SingleLine()
+									FontSize(core.FontSize(c, theme.RowSize)).Bold().SingleLine()
 							})
 						// Only today's column carries the current-time
 						// line: a line across all seven says the time seven
@@ -395,7 +395,7 @@ func CalendarMonthView(c *ui.Context, opts CalendarMonthViewOptions) CalendarMon
 	var r CalendarMonthViewResult
 	r.Element = ui.Column(c).FillWidth().Gap(u).Label(caption).Children(func() {
 		if opts.Caption {
-			ui.Text(c, caption).TextColor(k.Text).FontSize(theme.RowSize).
+			ui.Text(c, caption).TextColor(k.Text).FontSize(core.FontSize(c, theme.RowSize)).
 				Bold().SingleLine()
 		}
 		g := Grid(c, GridOptions{
@@ -493,7 +493,7 @@ func CalendarYearView(c *ui.Context, opts CalendarYearViewOptions) CalendarYearV
 				if stepButton(c, iconPrev, prev, core.ControlHeight(c)).Clicked() {
 					r.stepped = -1
 				}
-				ui.Text(c, itoa(year)).TextColor(k.Text).FontSize(theme.TitleSize).
+				ui.Text(c, itoa(year)).TextColor(k.Text).FontSize(core.FontSize(c, theme.TitleSize)).
 					Bold().Grow(1).TextAlign(ui.Center).SingleLine()
 				if stepButton(c, iconNext, next, core.ControlHeight(c)).Clicked() {
 					r.stepped = 1

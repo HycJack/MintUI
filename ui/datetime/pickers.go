@@ -300,7 +300,7 @@ func DateRangePicker(c *ui.Context, opts DateRangePickerOptions) DateRangePicker
 			})
 			if !opts.Start.IsZero() && !opts.End.IsZero() {
 				ui.Text(c, span(time.Duration(DaysBetween(*opts.Start, *opts.End))*24*time.Hour)).
-					TextColor(k.TextMuted).FontSize(theme.CaptionSize).SingleLine()
+					TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 			}
 		},
 	})
@@ -386,7 +386,7 @@ func TimePicker(c *ui.Context, opts TimePickerOptions) TimePickerResult {
 						r.changed = true
 					}
 					ui.Text(c, pad2(value)).TextColor(k.Text).
-						FontSize(theme.BodySize).Bold().FontFeatures("tnum")
+						FontSize(core.FontSize(c, theme.BodySize)).Bold().FontFeatures("tnum")
 					if stepButton(c, iconDown, down, core.ControlHeight(c)).Clicked() {
 						move(-dh, -dm, -ds)
 						r.changed = true
@@ -396,12 +396,12 @@ func TimePicker(c *ui.Context, opts TimePickerOptions) TimePickerResult {
 		part(core.Msg(c, "datetime.hour", "Hour"), opts.Value.Hour(),
 			core.Msg(c, "datetime.hourLater", "One hour later"),
 			core.Msg(c, "datetime.hourEarlier", "One hour earlier"), 1, 0, 0)
-		ui.Text(c, ":").TextColor(k.TextMuted).FontSize(theme.BodySize).Bold()
+		ui.Text(c, ":").TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.BodySize)).Bold()
 		part(core.Msg(c, "datetime.minute", "Minute"), opts.Value.Minute(),
 			core.Msg(c, "datetime.minuteLater", "One minute later"),
 			core.Msg(c, "datetime.minuteEarlier", "One minute earlier"), 0, minuteStep, 0)
 		if opts.ShowSeconds {
-			ui.Text(c, ":").TextColor(k.TextMuted).FontSize(theme.BodySize).Bold()
+			ui.Text(c, ":").TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.BodySize)).Bold()
 			part(core.Msg(c, "datetime.second", "Second"), opts.Value.Second(),
 				core.Msg(c, "datetime.secondLater", "One second later"),
 				core.Msg(c, "datetime.secondEarlier", "One second earlier"), 0, 0, secondStep)
@@ -486,11 +486,11 @@ func TimeRangePicker(c *ui.Context, opts TimeRangePickerOptions) TimeRangePicker
 			Disabled:    opts.Disabled,
 		})
 		r.changed = from.Changed() || until.Changed()
-		ui.Text(c, "\u2013").TextColor(k.TextMuted).FontSize(theme.BodySize)
+		ui.Text(c, "\u2013").TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.BodySize))
 		// The length is the point of the component: two clocks on their own
 		// do not say whether the meeting fits.
 		ui.Text(c, span(Until(opts.Start, opts.End))).TextColor(k.TextMuted).
-			FontSize(theme.CaptionSize)
+			FontSize(core.FontSize(c, theme.CaptionSize))
 	})
 	return r
 }
@@ -664,7 +664,7 @@ func MonthPicker(c *ui.Context, opts MonthPickerOptions) MonthPickerResult {
 				r.stepped = -1
 			}
 			ui.Text(c, itoa(month.Year())).TextColor(k.Text).
-				FontSize(theme.RowSize).Bold().Grow(1).TextAlign(ui.Center).SingleLine()
+				FontSize(core.FontSize(c, theme.RowSize)).Bold().Grow(1).TextAlign(ui.Center).SingleLine()
 			if stepButton(c, iconNext, next, core.ControlHeight(c)).Clicked() {
 				r.stepped = 1
 			}
@@ -709,7 +709,7 @@ func monthCell(c *ui.Context, name string, at time.Time, open bool, today time.T
 	btn := ui.Button(c, "").Grow(1).Height(u * 9).Radius(theme.SmallRadius).
 		Background(bg).TextColor(fg).Disabled(off).Label(name + " " + itoa(at.Year())).
 		Children(func() {
-			ui.Text(c, name).FontSize(theme.RowSize).SingleLine()
+			ui.Text(c, name).FontSize(core.FontSize(c, theme.RowSize)).SingleLine()
 		})
 	if isToday && !open {
 		btn.Border(theme.BorderWidth, k.Accent)
@@ -790,7 +790,7 @@ func YearPicker(c *ui.Context, opts YearPickerOptions) YearPickerResult {
 				r.stepped = -1
 			}
 			ui.Text(c, itoa(first)+" – "+itoa(first+span-1)).TextColor(k.Text).
-				FontSize(theme.RowSize).Bold().Grow(1).TextAlign(ui.Center).SingleLine()
+				FontSize(core.FontSize(c, theme.RowSize)).Bold().Grow(1).TextAlign(ui.Center).SingleLine()
 			if stepButton(c, iconNext, next, core.ControlHeight(c)).Clicked() {
 				r.stepped = 1
 			}
@@ -834,7 +834,7 @@ func yearCell(c *ui.Context, at time.Time, open bool, today time.Time,
 	btn := ui.Button(c, "").Grow(1).Height(u * 9).Radius(theme.SmallRadius).
 		Background(bg).TextColor(fg).Disabled(off).Label(itoa(at.Year())).
 		Children(func() {
-			ui.Text(c, itoa(at.Year())).FontSize(theme.RowSize).FontFeatures("tnum")
+			ui.Text(c, itoa(at.Year())).FontSize(core.FontSize(c, theme.RowSize)).FontFeatures("tnum")
 		})
 	if isToday && !open {
 		btn.Border(theme.BorderWidth, k.Accent)
@@ -914,7 +914,7 @@ func WeekPicker(c *ui.Context, opts WeekPickerOptions) WeekPickerResult {
 		for w := range weeks {
 			ui.Column(c).FillWidth().Gap(u / 2).Children(func() {
 				ui.Text(c, itoa(WeekOfYear(first.AddDate(0, 0, w*7)))).
-					TextColor(k.TextFaint).FontSize(theme.CaptionSize).
+					TextColor(k.TextFaint).FontSize(core.FontSize(c, theme.CaptionSize)).
 					TextAlign(ui.Center).SingleLine()
 				for d := range 7 {
 					day := first.AddDate(0, 0, w*7+d)
@@ -957,9 +957,9 @@ func weekCell(c *ui.Context, day time.Time, weekday string, selected, today bool
 		Radius(theme.SmallRadius).Background(bg).TextColor(fg).Disabled(off).
 		Label(dayNameOf(day, DefaultMonths())).
 		Children(func() {
-			ui.Text(c, weekday).TextColor(k.TextFaint).FontSize(theme.CaptionSize).
+			ui.Text(c, weekday).TextColor(k.TextFaint).FontSize(core.FontSize(c, theme.CaptionSize)).
 				SingleLine()
-			ui.Text(c, itoa(day.Day())).FontSize(theme.RowSize).Bold().SingleLine()
+			ui.Text(c, itoa(day.Day())).FontSize(core.FontSize(c, theme.RowSize)).Bold().SingleLine()
 		})
 	if today && !selected {
 		btn.Border(theme.BorderWidth, k.Accent)

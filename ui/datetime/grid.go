@@ -256,7 +256,7 @@ func Grid(c *ui.Context, opts GridOptions) GridResult {
 				// only place it can go without moving with the days.
 				line.Children(func() {
 					ui.Text(c, itoa(week)).TextColor(k.TextFaint).
-						FontSize(theme.CaptionSize).SingleLine().
+						FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine().
 						Width(side).TextAlign(ui.Center)
 				})
 			}
@@ -295,7 +295,7 @@ func gridHead(c *ui.Context, opts GridOptions, side, gap float32) {
 			if name == "" {
 				name = core.Msg(c, "datetime.week", "Wk")
 			}
-			ui.Text(c, name).TextColor(k.TextFaint).FontSize(theme.CaptionSize).
+			ui.Text(c, name).TextColor(k.TextFaint).FontSize(core.FontSize(c, theme.CaptionSize)).
 				Width(side).TextAlign(ui.Center).SingleLine()
 		}
 		// The heading is clipped to three characters to fit the narrowest
@@ -304,7 +304,7 @@ func gridHead(c *ui.Context, opts GridOptions, side, gap float32) {
 		short := weekdays.Shorten(3)
 		for i, name := range short {
 			full := weekdays[i]
-			ui.Text(c, name).TextColor(k.TextMuted).FontSize(theme.CaptionSize).
+			ui.Text(c, name).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.CaptionSize)).
 				Bold().Grow(1).TextAlign(ui.Center).SingleLine().Label(full)
 		}
 	})
@@ -344,7 +344,7 @@ func dayCell(c *ui.Context, opts GridOptions, cell Cell, side float32, months Mo
 	btn := ui.Button(c, "").Grow(1).MinWidth(MinCellSize).Height(side).Shrink(0).
 		Radius(side / 2).Background(bg).TextColor(fg).Disabled(disabled).
 		Label(dayNameOf(day, months)).Center().Children(func() {
-		ui.Text(c, itoa(day.Day())).FontSize(theme.RowSize).Bold().SingleLine().
+		ui.Text(c, itoa(day.Day())).FontSize(core.FontSize(c, theme.RowSize)).Bold().SingleLine().
 			FontFeatures("tnum")
 		// The dot for a busy day sits under the number rather than replacing
 		// it: the number is what the day is, the dot is what is on it. It

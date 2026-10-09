@@ -54,7 +54,7 @@ func RelativeTime(c *ui.Context, opts RelativeTimeOptions) *ui.Element {
 	if name == "" {
 		name = text
 	}
-	return ui.Text(c, text).TextColor(colour).FontSize(theme.CaptionSize).
+	return ui.Text(c, text).TextColor(colour).FontSize(core.FontSize(c, theme.CaptionSize)).
 		SingleLine().Label(name)
 }
 
@@ -113,7 +113,7 @@ func Countdown(c *ui.Context, opts CountdownOptions) *ui.Element {
 	}
 
 	return ui.Column(c).FillWidth().Gap(u).Label(name).Children(func() {
-		ui.Text(c, text).TextColor(k.Text).FontSize(theme.BodySize).Bold().
+		ui.Text(c, text).TextColor(k.Text).FontSize(core.FontSize(c, theme.BodySize)).Bold().
 			SingleLine().FontFeatures("tnum")
 		if !opts.From.IsZero() && !opts.Until.IsZero() && opts.Until.After(opts.From) {
 			whole := opts.Until.Sub(opts.From)
@@ -239,7 +239,7 @@ func Stopwatch(c *ui.Context, opts StopwatchOptions) StopwatchResult {
 
 	r.Element = ui.Column(c).FillWidth().Gap(u * 1.5).Label(name).Children(func() {
 		ui.Text(c, StopwatchText(elapsed, precision)).TextColor(k.Text).
-			FontSize(theme.DisplaySize).Bold().FontFeatures("tnum").
+			FontSize(core.FontSize(c, theme.DisplaySize)).Bold().FontFeatures("tnum").
 			SingleLine().Label(name + " " + StopwatchText(elapsed, precision))
 		ui.Row(c).FillWidth().Gap(u * 1.5).Children(func() {
 			toggle := input.Button(c, label, input.ButtonOptions{Primary: !running, Label: label})
@@ -281,7 +281,7 @@ func Stopwatch(c *ui.Context, opts StopwatchOptions) StopwatchResult {
 					gap := (*opts.Laps)[i].Sub(*opts.Start) - prev
 					ui.Text(c, itoa(len(*opts.Laps)-i)+".  "+
 						StopwatchText(gap, precision)).TextColor(k.TextMuted).
-						FontSize(theme.CaptionSize).FontFeatures("tnum")
+						FontSize(core.FontSize(c, theme.CaptionSize)).FontFeatures("tnum")
 				}
 			})
 		}
@@ -415,7 +415,7 @@ func ReminderPicker(c *ui.Context, opts ReminderPickerOptions) ReminderPickerRes
 				btn := ui.Button(c, "").Grow(1).Height(core.ControlHeight(c)).
 					Radius(theme.PillRadius).Background(bg).TextColor(fg).
 					Label(name + " " + label).Tooltip(label).Children(func() {
-					ui.Text(c, label).TextColor(fg).FontSize(theme.CaptionSize).SingleLine()
+					ui.Text(c, label).TextColor(fg).FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 				})
 				if btn.Clicked() {
 					*opts.Value = d
@@ -429,7 +429,7 @@ func ReminderPicker(c *ui.Context, opts ReminderPickerOptions) ReminderPickerRes
 			ui.Box(c).Radius(theme.PillRadius).Background(k.AccentBg).
 				Padding(u, u*2).Children(func() {
 				ui.Text(c, format(*opts.Value)).TextColor(k.AccentText).
-					FontSize(theme.CaptionSize)
+					FontSize(core.FontSize(c, theme.CaptionSize))
 			})
 		}
 	})
@@ -506,18 +506,18 @@ func EventPopover(c *ui.Context, opts EventPopoverOptions) EventPopoverResult {
 					text += " – " + format(end)
 				}
 				ui.Text(c, text).TextColor(k.TextMuted).
-					FontSize(theme.CaptionSize).FontFeatures("tnum")
+					FontSize(core.FontSize(c, theme.CaptionSize)).FontFeatures("tnum")
 				if e.Location != "" {
 					ui.Text(c, e.Location).TextColor(k.Text).
-						FontSize(theme.RowSize).SingleLine()
+						FontSize(core.FontSize(c, theme.RowSize)).SingleLine()
 				}
 				// The duration is here as well as the two ends, because the
 				// ends of a booking are the two things a person gets wrong.
 				ui.Text(c, DurationText(e.Duration())).
-					TextColor(fg).FontSize(theme.CaptionSize)
+					TextColor(fg).FontSize(core.FontSize(c, theme.CaptionSize))
 				if e.Cancelled {
 					ui.Text(c, core.Msg(c, "datetime.cancelled", "Cancelled")).
-						TextColor(k.Danger).FontSize(theme.CaptionSize)
+						TextColor(k.Danger).FontSize(core.FontSize(c, theme.CaptionSize))
 				}
 				if opts.Edit != "" || opts.Delete != "" {
 					ui.Row(c).FillWidth().Gap(u).Children(func() {
@@ -611,7 +611,7 @@ func EventEditor(c *ui.Context, opts EventEditorOptions) EventEditorResult {
 	var r EventEditorResult
 	r.Element = ui.Column(c).FillWidth().Gap(u * 2).Label(opts.Name).Children(func() {
 		fieldRow(c, core.Msg(c, "datetime.title", "Title"), func() {
-			ui.Text(c, e.Title).TextColor(k.Text).FontSize(theme.BodySize).SingleLine()
+			ui.Text(c, e.Title).TextColor(k.Text).FontSize(core.FontSize(c, theme.BodySize)).SingleLine()
 		})
 		DateTimePicker(c, DateTimePickerOptions{
 			Value:      &e.Start,
@@ -621,7 +621,7 @@ func EventEditor(c *ui.Context, opts EventEditorOptions) EventEditorResult {
 		})
 		if e.Start.Location() != nil && opts.Timezone != "" {
 			ui.Text(c, ZoneLabel(opts.Timezone, e.Start)).TextColor(k.TextMuted).
-				FontSize(theme.CaptionSize).SingleLine()
+				FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 		}
 		// The end follows the start, and only when it is not already right:
 		// a field that rewrote its own value on every frame would be a field
@@ -632,7 +632,7 @@ func EventEditor(c *ui.Context, opts EventEditorOptions) EventEditorResult {
 				e.End = end
 			}
 			ui.Text(c, DurationText(e.Duration())).TextColor(k.TextMuted).
-				FontSize(theme.CaptionSize).FontFeatures("tnum")
+				FontSize(core.FontSize(c, theme.CaptionSize)).FontFeatures("tnum")
 		}
 		if opts.Reminder != nil {
 			ReminderPicker(c, ReminderPickerOptions{Value: opts.Reminder})
@@ -660,7 +660,7 @@ func EventEditor(c *ui.Context, opts EventEditorOptions) EventEditorResult {
 func fieldRow(c *ui.Context, name string, value func()) {
 	k, u := core.Tokens(c), core.Density(c).Unit()
 	ui.Column(c).FillWidth().Gap(u / 2).Label(name).Children(func() {
-		ui.Text(c, name).TextColor(k.TextMuted).FontSize(theme.CaptionSize).SingleLine()
+		ui.Text(c, name).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 		ui.Box(c).FillWidth().Radius(theme.ControlRadius).Background(k.Surface).
 			Padding(u, u*2).Children(value)
 	})

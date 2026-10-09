@@ -75,7 +75,7 @@ func Switch(c *ui.Context, on *bool, opts SwitchOptions) *ui.Element {
 		return sw()
 	}
 	return ui.Row(c).AlignItems(ui.Center).Gap(u * 2).Label(opts.Label).Children(func() {
-		ui.Text(c, opts.Label).TextColor(k.Text).FontSize(theme.RowSize)
+		ui.Text(c, opts.Label).TextColor(k.Text).FontSize(core.FontSize(c, theme.RowSize))
 		sw()
 	})
 }

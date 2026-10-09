@@ -48,7 +48,7 @@ func PageHeader(c *ui.Context, opts HeaderOptions) *ui.Element {
 
 	return ui.Column(c).FillWidth().Padding(u*6, u*7, 0, u*7).Gap(u * 2).Children(func() {
 		if len(opts.Crumbs) > 0 {
-			ui.Text(c, join(opts.Crumbs, "  /  ")).TextColor(k.TextMuted).FontSize(theme.MetaSize)
+			ui.Text(c, join(opts.Crumbs, "  /  ")).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.MetaSize))
 		}
 		ui.Row(c).FillWidth().AlignItems(ui.End).Gap(u * 6).Children(func() {
 			ui.Column(c).Grow(1).Gap(u * 2).Children(func() {
@@ -56,7 +56,7 @@ func PageHeader(c *ui.Context, opts HeaderOptions) *ui.Element {
 				if opts.MetaSlot != nil {
 					opts.MetaSlot()
 				} else if opts.Meta != "" {
-					ui.Text(c, opts.Meta).TextColor(k.TextMuted).FontSize(theme.RowSize)
+					ui.Text(c, opts.Meta).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.RowSize))
 				}
 				if opts.SlotCount > 0 {
 					AvatarSlots(c, opts.AvatarSlots, opts.SlotCount)
@@ -89,11 +89,11 @@ func AvatarSlots(c *ui.Context, names []string, total int) *ui.Element {
 			}
 			box.Children(func() {
 				if in := internal.Initials(name); in != "" {
-					ui.Text(c, in).TextColor(k.Text).FontSize(theme.MonoSize).Bold()
+					ui.Text(c, in).TextColor(k.Text).FontSize(core.FontSize(c, theme.MonoSize)).Bold()
 				}
 			})
 		}
-		ui.Text(c, itoa(total)+" technicians").TextColor(k.TextMuted).FontSize(theme.RowSize)
+		ui.Text(c, itoa(total)+" technicians").TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.RowSize))
 	})
 }
 

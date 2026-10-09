@@ -85,10 +85,10 @@ func AgendaView(c *ui.Context, opts AgendaOptions) *ui.Element {
 					}
 					ui.Box(c).Padding(u*0.75, u*1.5).Radius(theme.PillRadius).
 						Background(badge).Label(format(day)).Children(func() {
-						ui.Text(c, format(day)).TextColor(fg).FontSize(theme.CaptionSize)
+						ui.Text(c, format(day)).TextColor(fg).FontSize(core.FontSize(c, theme.CaptionSize))
 					})
 					ui.Text(c, WeekdayFullName(day)+" "+months[monthIndex(day)]).
-						TextColor(k.TextMuted).FontSize(theme.CaptionSize).SingleLine()
+						TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 				})
 				ui.Column(c).FillWidth().Gap(u).Children(func() {
 					shown := len(events)
@@ -105,7 +105,7 @@ func AgendaView(c *ui.Context, opts AgendaOptions) *ui.Element {
 					if rest := len(events) - shown; rest > 0 {
 						ui.Text(c, internal.Commas(rest)+" "+
 							core.Msg(c, "datetime.more", "more")).TextColor(k.TextMuted).
-							FontSize(theme.CaptionSize)
+							FontSize(core.FontSize(c, theme.CaptionSize))
 					}
 				})
 			})
@@ -218,32 +218,32 @@ func AttendeeList(c *ui.Context, opts AttendeeOptions) *ui.Element {
 					circle.Children(func() {
 						if in := internal.Initials(a.Name); in != "" {
 							ui.Text(c, in).TextColor(k.Text).
-								FontSize(theme.MonoSize).Bold()
+								FontSize(core.FontSize(c, theme.MonoSize)).Bold()
 						}
 					})
 				}
 				ui.Column(c).Grow(1).Children(func() {
 					ui.Text(c, a.Name).TextColor(k.Text).
-						FontSize(theme.RowSize).SingleLine()
+						FontSize(core.FontSize(c, theme.RowSize)).SingleLine()
 					if a.Note != "" {
 						ui.Text(c, a.Note).TextColor(k.TextMuted).
-							FontSize(theme.CaptionSize).SingleLine()
+							FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 					}
 				})
 				if a.Timezone != "" {
 					ui.Text(c, a.Timezone).TextColor(k.TextFaint).
-						FontSize(theme.CaptionSize).SingleLine()
+						FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 				}
 				if opts.ShowResponse {
 					_, fg := a.Response.severity().Pair(k)
 					ui.Text(c, a.Response.String()).TextColor(fg).
-						FontSize(theme.CaptionSize).SingleLine()
+						FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 				}
 			})
 		}
 		if rest := len(opts.Attendees) - shown; rest > 0 {
 			ui.Text(c, "+"+internal.Commas(rest)).TextColor(k.TextMuted).
-				FontSize(theme.CaptionSize)
+				FontSize(core.FontSize(c, theme.CaptionSize))
 		}
 	})
 }
@@ -318,7 +318,7 @@ func AvailabilityPicker(c *ui.Context, opts AvailabilityOptions) AvailabilityRes
 			ui.Box(c).Width(1).Height(u * 9)
 			for hour := start; hour < end; hour++ {
 				ui.Text(c, HourLabel(hour)).TextColor(k.TextFaint).
-					FontSize(theme.CaptionSize).Height(u * 8).
+					FontSize(core.FontSize(c, theme.CaptionSize)).Height(u * 8).
 					TextAlign(ui.End).SingleLine()
 			}
 		})
@@ -330,9 +330,9 @@ func AvailabilityPicker(c *ui.Context, opts AvailabilityOptions) AvailabilityRes
 						Background(k.Surface).Center().
 						Label(dayNameOf(day, months)).Children(func() {
 						ui.Text(c, weekdays[Weekday(day)]).TextColor(k.TextMuted).
-							FontSize(theme.CaptionSize).SingleLine()
+							FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 						ui.Text(c, itoa(day.Day())).TextColor(k.Text).
-							FontSize(theme.RowSize).Bold().SingleLine()
+							FontSize(core.FontSize(c, theme.RowSize)).Bold().SingleLine()
 					})
 					for hour := start; hour < end; hour++ {
 						at := time.Date(day.Year(), day.Month(), day.Day(), hour, 0, 0, 0, day.Location())
@@ -363,7 +363,7 @@ func availabilityCell(c *ui.Context, label string, at time.Time, open, marked bo
 	btn := ui.Button(c, "").FillWidth().Height(u * 8).Shrink(0).
 		Radius(theme.SmallRadius).Background(bg).TextColor(fg).
 		Label(label + " " + FormatDate(at)).Children(func() {
-		ui.Text(c, label).FontSize(theme.CaptionSize).FontFeatures("tnum")
+		ui.Text(c, label).FontSize(core.FontSize(c, theme.CaptionSize)).FontFeatures("tnum")
 	})
 	return btn.Clicked()
 }
@@ -446,7 +446,7 @@ func DurationPicker(c *ui.Context, opts DurationPickerOptions) DurationPickerRes
 				r.changed = true
 			}
 			ui.Text(c, format(*opts.Value)).TextColor(k.Text).
-				FontSize(theme.BodySize).Bold().Grow(1).TextAlign(ui.Center).
+				FontSize(core.FontSize(c, theme.BodySize)).Bold().Grow(1).TextAlign(ui.Center).
 				FontFeatures("tnum")
 			if stepButton(c, iconUp, core.Msg(c, "datetime.longer", "Longer"),
 				core.ControlHeight(c)).Clicked() {
@@ -471,7 +471,7 @@ func DurationPicker(c *ui.Context, opts DurationPickerOptions) DurationPickerRes
 					btn := ui.Button(c, "").Grow(1).Height(core.ControlHeight(c)).
 						Radius(theme.PillRadius).Background(bg).TextColor(fg).
 						Label(name + " " + label).Children(func() {
-						ui.Text(c, label).TextColor(fg).FontSize(theme.CaptionSize).SingleLine()
+						ui.Text(c, label).TextColor(fg).FontSize(core.FontSize(c, theme.CaptionSize)).SingleLine()
 						if chosen {
 							ui.Box(c).Width(u * 1.25).Height(u * 1.25).
 								Radius(u).Background(k.Lively)

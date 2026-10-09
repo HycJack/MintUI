@@ -27,7 +27,7 @@ func Example() {
 
 		ui.Column(c).FillWidth().Gap(u * 4).Children(func() {
 			ui.Text(c, "Wednesday 7 October").TextColor(k.Text).
-				FontSize(theme.TitleSize).Bold()
+				FontSize(core.FontSize(c, theme.TitleSize)).Bold()
 
 			datetime.Calendar(c, datetime.CalendarOptions{
 				Month:    &day,

@@ -128,7 +128,7 @@ func CalendarTimeGrid(c *ui.Context, opts TimeGridOptions) TimeGridResult {
 			ui.Column(c).Width(labelWidth).Shrink(0).FillHeight().Children(func() {
 				for hour := start; hour < end; hour++ {
 					ui.Text(c, HourLabel(hour)).TextColor(k.TextFaint).
-						FontSize(theme.CaptionSize).Height(hourHeight).
+						FontSize(core.FontSize(c, theme.CaptionSize)).Height(hourHeight).
 						TextAlign(ui.End).SingleLine()
 				}
 			})

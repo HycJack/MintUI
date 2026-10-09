@@ -24,7 +24,7 @@ func Avatar(c *ui.Context, name string) *ui.Element {
 		Center().Label(name)
 	if in := internal.Initials(name); in != "" {
 		box.Children(func() {
-			ui.Text(c, in).TextColor(k.Text).FontSize(theme.MonoSize).Bold()
+			ui.Text(c, in).TextColor(k.Text).FontSize(core.FontSize(c, theme.MonoSize)).Bold()
 		})
 	}
 	return box
@@ -51,11 +51,11 @@ func AvatarCluster(c *ui.Context, names []string, total int) *ui.Element {
 			}
 			box.Children(func() {
 				ui.Text(c, internal.Initials(names[i])).
-					TextColor(k.Text).FontSize(theme.MonoSize).Bold()
+					TextColor(k.Text).FontSize(core.FontSize(c, theme.MonoSize)).Bold()
 			})
 		}
 		if total > shown {
-			ui.Text(c, fmtInt(total)+" "+label).TextColor(k.TextMuted).FontSize(theme.MetaSize)
+			ui.Text(c, fmtInt(total)+" "+label).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.MetaSize))
 		}
 	})
 }

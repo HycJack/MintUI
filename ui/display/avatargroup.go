@@ -94,7 +94,7 @@ func AvatarGroup(c *ui.Context, names []string, opts AvatarGroupOptions) AvatarG
 			}
 			box.Children(func() {
 				ui.Text(c, internal.Initials(names[i])).TextColor(k.Text).
-					FontSize(theme.MonoSize).Bold()
+					FontSize(core.FontSize(c, theme.MonoSize)).Bold()
 			})
 		}
 		if rest > 0 {
