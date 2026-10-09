@@ -719,6 +719,49 @@ func TestMultiFileDiffReviewApprovesByPath(t *testing.T) {
 	}
 }
 
+// TestReviewApproveWritesIntoTheCallersSet and
+// TestReviewNeedsACallersApprovedMap: Options arrives by value, so a map
+// allocated inside the approve handler was written into this frame's copy and
+// gone by the next one. A non-nil map shares its header with the caller's and
+// survives; a nil one has nothing to write through, and asking for one is
+// better than inventing one the caller cannot read.
+func TestReviewApproveWritesIntoTheCallersSet(t *testing.T) {
+	approved := map[string]bool{}
+	tt := ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		MultiFileDiffReview(c, MultiFileDiffReviewOptions{
+			Files:    []ReviewFile{{Path: "a.go", Change: FileAdded, Ours: "package a\n"}},
+			Approved: approved, Height: 180,
+		})
+	}, 600, 400)
+	if err := tt.Click("Approve a.go"); err != nil {
+		t.Fatal(err)
+	}
+	if !approved["a.go"] {
+		t.Error("the approval did not reach the caller's map")
+	}
+}
+
+func TestReviewNeedsACallersApprovedMap(t *testing.T) {
+	defer func() {
+		got := recover()
+		if got == nil {
+			t.Fatal("a review drew itself with no Approved map, so an approval would be " +
+				"written into the frame's copy and lost at its end")
+		}
+		if msg, _ := got.(string); !strings.HasPrefix(msg, "agent: ") {
+			t.Errorf("panicked with %v, want an agent: message", got)
+		}
+	}()
+	ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		MultiFileDiffReview(c, MultiFileDiffReviewOptions{
+			Files:  []ReviewFile{{Path: "a.go", Change: FileAdded, Ours: "package a\n"}},
+			Height: 180,
+		})
+	}, 600, 400)
+}
+
 // TestAgentVersionSwitcherChoosesIntoTheCallersInt, and
 // TestCheckpointListAsksToBeRestoredById: two more of the same rule — the
 // answer is the caller's state, and the result only names what changed.

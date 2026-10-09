@@ -555,7 +555,9 @@ type MultiFileDiffReviewOptions struct {
 	// Approved is the set of paths a person has signed off on, and the
 	// caller's. It is a set rather than a count because a review is worked
 	// through in an order nobody chose, and the tenth file approved has to
-	// still be approved after the eleventh is looked at.
+	// still be approved after the eleventh is looked at. It is required, and
+	// has to be the caller's own map: Options arrives by value, so a set
+	// made here would be this frame's copy and gone by the next one.
 	Approved map[string]bool
 	// Lang is which language's words the highlighter knows.
 	Lang code.Lang
@@ -588,6 +590,13 @@ func MultiFileDiffReview(c *ui.Context, opts MultiFileDiffReviewOptions) MultiFi
 	}
 	if opts.Height <= 0 {
 		panic("agent: MultiFileDiffReview needs a Height for the diff pane")
+	}
+	if opts.Approved == nil {
+		// Checked before anything is drawn rather than at the click: a review
+		// that refuses to approve is a broken review, and finding out at the
+		// press is a frame too late to see which call site did it. See the
+		// approve handler for why the set cannot be allocated here.
+		panic("agent: Review needs a non-nil Approved map to write into")
 	}
 	for i, f := range opts.Files {
 		if f.Path == "" {
@@ -629,7 +638,10 @@ func MultiFileDiffReview(c *ui.Context, opts MultiFileDiffReviewOptions) MultiFi
 					r.selected = i
 				}, func() {
 					if opts.Approved == nil {
-						opts.Approved = map[string]bool{}
+						// Options arrives by value, so a map we allocated here
+						// would be written into this frame's copy and lost at
+						// frame's end. Ask for the map instead of inventing one.
+						panic("agent: Review needs a non-nil Approved map to write into")
 					}
 					opts.Approved[f.Path] = !opts.Approved[f.Path]
 					r.approved = f.Path

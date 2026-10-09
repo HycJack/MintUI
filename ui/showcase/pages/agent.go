@@ -543,7 +543,10 @@ func runPage(c *ui.Context) {
 	diffTheirs := "package agent\n\nfunc itoa(n int) string { return strconv.FormatInt(int64(n), 10) }\n\n// signed renders a diff count.\n"
 	agent.MultiFileDiffReview(c, agent.MultiFileDiffReviewOptions{
 		Ours: "main", Theirs: "review", Height: 190,
-		Approved: map[string]bool{"ui/agent/status.go": true},
+		// Held across frames, not a fresh map each one: a set made inside the
+		// page would lose every signature the moment the frame was over.
+		Approved: *showcase.State(c, "agent/review/approved",
+			map[string]bool{"ui/agent/status.go": true}),
 		Files: []agent.ReviewFile{
 			{Path: "ui/agent/shared.go", Change: agent.FileModified,
 				Base: diffBase, Ours: diffOurs, Theirs: diffTheirs},
