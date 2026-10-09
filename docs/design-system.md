@@ -915,13 +915,16 @@ return e.Width(theme.BorderWidth).FillHeight()
 | 护栏 | 抓什么 |
 |---|---|
 | `Page.Missing` | 承诺的文字没画出来 |
-| `Page.Gutter`（28px） | 左右两条 28 像素的边里不许出现任何一个不是背景色的像素 —— 有东西离开了 `Paint` 给整页加的那层内边距，贴边和被裁在图上长得一样 |
+| `Page.Gutter`（28px） | 左右两条 28 像素的边里不许出现任何一个**离开背景色太远**的像素 —— 有东西离开了 `Paint` 给整页加的那层内边距，贴边和被裁在图上长得一样 |
 | `BottomFlush` | 页面最后 60 像素里有内容 = 这一页比自己声明的高，底部被切了 |
 | `Page.Anchored` | 贴窗口边的层（底栏、抽屉）让上面两条测不了，只能由作者自己声明 |
 
 `Gutter` 是 `Page` 上真实存在的一个常量，`GutterFlush` 是 `cmd/gallery` 里未导出的那一个
 检查：它不认「小节」，只认像素 —— 左右两条边带各自**整条**从上往下扫，不是采样几行。
 侧边没有「恰好落进两小节之间那个空隙」的运气，所以采样在这里是不成立的。
+「背景色」也不是精确相等：`cmd/gallery/main.go:318` 的 `near` 按平方距离 `< 900` 判同色
+（四条通道一起差时每通道 14 以内都算同色，一条通道独差最多到 29），
+所以抗锯齿留下的边像素不算违规 —— 抓的是真的贴边，不是半个字。
 
 ### 20.1 `Height` 由 `-fit` 给，不要手写
 
@@ -962,6 +965,10 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
 把审核里定为 Critical / Important 的缺陷修掉。下面是它**没有**做的事，写在这里是为了让
 下一批不必重跑一遍审核。每条一行：`位置 — 问题 — 影响`。
 
+另有整类「审核评为 Important、但不属于那 17 条 Critical」的项，本批既没修也没重跑审核；完整名单
+在 `docs/superpowers/specs/2026-10-08-mujica-parity-design.md:142-146` —— 下一批照那份清单做，
+不必重跑一遍审核。
+
 ### 21.1 `-check` 现在报出来的
 
 - `cmd/gallery -check`（干净树，exit 1）— 13 页报「painted inside its own 28-pixel gutter」：
@@ -983,16 +990,19 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
 - `ui/showcase/page.go` 的 `paintedTexts` — 对「同一字符串被引擎报告多次」一律按引擎的话信，
   所以同一页把一个字符串写两遍就能绕过 `Want`；按 `page.go` 自己的注释，display 页上有 53 个
   字符串、agent 页上有 128 个落在这一档。
-- 同一个函数的判别是**像素相等性**，不是「真的画了字」：浅色下两个颜色差一两个单位就算「不同」；
-  而且一个挂在「画了别的东西」的盒子上的名字会无条件通过。
-  → 影响：`ui/chat/payload.go:241` `FileMessage` 的 caption 用 `k.Text` 而不是气泡自己的墨色，
-  落在 `RoleUser` 的填充气泡（`k.Fill`）上。实测对比度浅色 1.02:1、深色 1.00:1
-  （深色下 `k.Text` 与 `k.Fill` **都是 `#f4f4f5`**）—— 两套外观下都读不出来，
-  却同时满足 `Want` 和 `TestPagesDrawInBothAppearances`。**未修。**
-  同一条豁免今天已经在放过别的名字：逐页跑一遍 `paintedTexts` 的判别，两种外观下被剔除的字符串
-  是 account 3、code 14、git 2、input 5、media 2、messaging 2，以及 chat 深色 1
-  （即上面那条 caption）；`finance` 上的 `"Market overview"`（`finance.go:272`）是一个
-  `DataTable` 的 `Label`，它满足 `Want` 靠的是表格盒子里画满了行，不是靠这几个字被画出来。
+- 同一个函数的判别是**像素相等性**，不是「真的画了字」：浅色下 `k.Fill` `#1a1a1f` 与
+  `k.Text` `#18181b` 按通道差 2/2/**4** —— 最大那一路才 4，这么小的差别也足以骗过精确 RGBA
+  判别；而且一个挂在「画了别的东西」的盒子上的名字会无条件通过。
+  → 本批发现并修掉的实例：`ui/chat/payload.go:247` `FileMessage` 的 caption 曾写死 `k.Text`
+  而不是气泡自己的墨色，落在 `RoleUser` 的填充气泡（`k.Fill`）上。实测对比度浅色 1.02:1、
+  深色 1.00:1（深色下 `k.Text` 与 `k.Fill` **都是 `#f4f4f5`**）—— 两套外观下都读不出来，
+  却同时满足 `Want` 和 `TestPagesDrawInBothAppearances`。现已改为不写颜色、继承气泡的墨色，
+  由 `ui/chat` 的 `TestFileMessageCaptionTakesTheBubbleInk` 钉住；**这条豁免本身未修**，
+  下面那批名字今天仍靠它。
+  同一条豁免当时已经在放过别的名字：逐页跑一遍 `paintedTexts` 的判别（修 caption 之前量的），
+  两种外观下被剔除的字符串是 account 3、code 14、git 2、input 5、media 2、messaging 2，
+  以及 chat 深色 1（即上面那条 caption）；`finance` 上的 `"Market overview"`（`finance.go:272`）
+  是一个 `DataTable` 的 `Label`，它满足 `Want` 靠的是表格盒子里画满了行，不是靠这几个字被画出来。
 - `TestPagesDrawInBothAppearances` 数的是引擎报告的 `Texts()`，不是 `paintedTexts`，
   而 `paintedTexts` 未导出、这个包够不着 → 上面那条缺陷正是它看不见的那一类。
 - `GutterFlush` 读的是每页的**第三次**绘制，而 `checkShots` 自己的注释说「同一页的第二次绘制
@@ -1009,7 +1019,7 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
 - `checkGates` 每页绘三次（`Draw` 一次、`BottomFlush` 一次、`GutterFlush` 一次）→
   `-check` 实测 2.34s，`-shots`（含逐页校验与 22 张 PNG 的编码）10.82s。
 
-### 21.3 库里的真实缺陷（审核评为 Important，本批未修）
+### 21.3 库里的真实缺陷（本批 review 报出，本批未修）
 
 - `ui/navigation/tabs.go:343` `windowAround` 与 `:276` `Pagination` — 同一个文件里，
   `total <= 0` 一个静默返回 `nil`、另一个 panic；同一条件两套策略，相隔 67 行。
@@ -1031,8 +1041,8 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
 - `ui/datetime` `format.go` — 输出对「一个单位 + 亚毫秒余数」这一族 ≥1ms 的输入
   **不再字节稳定**（`1.5ms`、`1s+1ns`、`45s+999ns`、`2h+3ns` 都会变长）；没有一个原本正确的
   输出变差（变长的那些此前都是有损的），但任何依赖字节相等的调用方会看到。
-- `ui/datetime` `format.go:263` — 注释说旧 bug「came out as an empty string rather than as
-  nothing at all」，而 `:269` 的规则正是「零是 `"0m"`，因为空串读起来像缺失值」——
+- `ui/datetime` `format.go:265` — 注释说旧 bug「came out as an empty string rather than as
+  nothing at all」，而 `:270` 的规则正是「零是 `"0m"`，因为空串读起来像缺失值」——
   空串**就是**「什么都没有」读起来的样子，那句话把规则说反了。同一函数的 `:331` 让
   `num == ""` 一符两义（既表示没匹配到双字节后缀，也表示匹配到了但这段就是裸单位），
   今天靠后面的 `Atoi` 兜住，解析器重写时是脆弱的那部分。
@@ -1048,7 +1058,7 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
 ### 21.4 文字缩放还剩两类绕过
 
 - **RichText span 与 sheet 标题** — `ui/data/card.go:115,116`、`ui/chart/empty.go:64,86`、
-  `ui/chart/matrix.go:495`（`p.Text(…, theme.RowSize, …)` 原生绘制调用）、
+  `ui/chart/matrix.go:490`（`p.Text(…, theme.RowSize, …)` 原生绘制调用）、
   `ui/overlay/dialog.go:145,234`、`drawer.go:53`、`ui/agent/request.go:349,546`、
   `ui/finance/quote.go:397` → 影响：用户把桌面字号设成 150% 时这些文字不跟着缩放。
   先定义「span 的尺寸」「sheet 标题的尺寸」是什么，才能决定怎么包 —— 这是待裁决，不是待扫。
@@ -1060,7 +1070,7 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
   改它会重新推导整套密度与几何测试。但它正是消解上面两条风险的**前置条件**，下一轮首项。
 - `TextScale > 1` 下没有任何测量：画廊没有这个 flag，缩放后的布局风险**未被测量**。
   点名的两处是同一个形状 —— **固定 36 DIP（`u * 9`）的格子里叠两行会缩放的文字**：
-  `ui/datetime/agenda.go:329`（weekday + 日期）与 `ui/datetime/pickers.go:936` 的 `weekCell`。
+  `ui/datetime/agenda.go:328`（weekday + 日期）与 `ui/datetime/pickers.go:936` 的 `weekCell`。
   这是证据的限制，不是交付缺陷。
 
 ### 21.5 零散的小账
@@ -1087,7 +1097,7 @@ go run ./cmd/gallery -shots out # 每页一张 PNG（-dark 连深色一起出，
   fixture 不发布，文字缩放不受影响。
 - `ui/code` `TestFindQueryTypingActuallyReachesTheCaller`（`code_test.go:985`）用坐标点击而非
   元素点击，因为 bar 与输入框共用 `"Find"` 这个 label。既有命名碰撞。
-- `ui/showcase/page.go:206` 的「empty」弱于实现真正的判据「只有一种纯色」；
+- `ui/showcase/page.go:207` 的「empty」弱于实现真正的判据「只有一种纯色」；
   `Missing` 的强度就是 `paintedTexts` 的强度，读 `Draw()` 的人需要先读它。
 - **本文档自己的债**：§16 的实现进度表已过期（「其余 14 个包 | 待实现」—— 现在 22 个包都有
   画廊页）。本批没改它：要重写这张表得先裁决「完整」的判定标准，那是一次裁决，不是同步。
