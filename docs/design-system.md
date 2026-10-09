@@ -41,8 +41,8 @@
 | `SurfacePressed` | `#e4e4e7` | `#2f2f34` | 按下态 |
 | `Border` | `#d9d9de` | `#33333a` | 边框、分组分隔线、选中行的计数药丸 |
 | `Text` | `#18181b` | `#f4f4f5` | 标题、卡片客户名、金额 |
-| `TextMuted` | `#696972` | `#a1a1aa` | 次级文字：工单号、技师名、日期 |
-| `TextFaint` | `#85858f` | `#71717a` | 分隔符等**记号**，不承载阅读 |
+| `TextMuted` | `#64646d` | `#a1a1aa` | 次级文字：工单号、技师名、日期 |
+| `TextFaint` | `#7f7f89` | `#7a7a86` | 分隔符等**记号**，不承载阅读 |
 
 > ⚠️ **反了会怎样**：把列做成白底、卡片做成灰底，卡片就"陷进"列里，整块板发平。
 > 这是实际踩过的坑 —— 卡片必须是 `Background`，列必须是 `Surface`。
@@ -51,13 +51,13 @@
 > 推导，直接读字段拿到的是**透明色**。深色填充面一律用 `Fill` / `OnFill`。
 
 **对比度是有测试守着的。** `ui/theme/theme_test.go` 断言正文文字在它出现的每一种表面上
-≥ 4.5:1（`SurfaceHover` 也在内）、`TextFaint` 这类记号 ≥ 3:1、状态药丸的前景/背景
-≥ 4.5:1、边框 ≤ 2:1（边框是边，不是线）。改色值跑一次测试就知道有没有破坏它，
-不需要靠眼睛比对截图。
+≥ 4.5:1 —— `Background`、`Surface`、`SurfaceHover`、`SurfacePressed`、`Fill` 一视同仁 ——
+`TextFaint` 这类记号在这三档表面上 ≥ 3:1、状态药丸的前景/背景 ≥ 4.5:1、边框 ≤ 2:1
+（边框是边，不是线）。改色值跑一次测试就知道有没有破坏它，不需要靠眼睛比对截图。
 
-> 浅色主题的 `TextMuted` / `TextFaint` 是在补上悬停底的对比度之后才定下来的
-> （见 `TestTextIsReadableOnEverySurface`）：`Surface` 上够用不代表
-> `SurfaceHover` 上够用，后者才是更难的那一面。
+> 浅色主题的 `TextMuted` / `TextFaint` 是在补上 `SurfaceHover` 和 `SurfacePressed`
+> 的对比度之后才定下来的（见 `TestTextIsReadableOnEverySurface`）：三种表面里
+> `SurfacePressed` 最暗，是最难的那一面，按它定值另外两面只会更宽裕。
 
 ### 2.2 状态色（成对的底 + 字）
 

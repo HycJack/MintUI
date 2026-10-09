@@ -68,23 +68,26 @@ func TestTextIsReadableOnEverySurface(t *testing.T) {
 			{"text on background", k.Text, k.Background},
 			{"text on surface", k.Text, k.Surface},
 			{"text on surface hover", k.Text, k.SurfaceHover},
+			{"text on surface pressed", k.Text, k.SurfacePressed},
 			{"text on fill", k.OnFill, k.Fill},
 			{"muted on surface", k.TextMuted, k.Surface},
 			{"muted on surface hover", k.TextMuted, k.SurfaceHover},
+			{"muted on surface pressed", k.TextMuted, k.SurfacePressed},
 		} {
 			if got := contrast(s.fg, s.bg); got < 4.5 {
 				t.Errorf("%s: %s is %.2f:1, below the 4.5 body-text floor", name, s.what, got)
 			}
 		}
 		// Faint carries marks, not reading: the separator between a card's
-		// reference and its subject. It still has to be visible — under the
-		// pointer as well as at rest, which is the harder of the two.
+		// reference and its subject. It still has to be visible, and pressed
+		// is the darkest of the three surfaces rather than the easiest.
 		for _, s := range []struct {
 			what string
 			bg   ui.Color
 		}{
 			{"surface", k.Surface},
 			{"surface hover", k.SurfaceHover},
+			{"surface pressed", k.SurfacePressed},
 		} {
 			if got := contrast(k.TextFaint, s.bg); got < 3 {
 				t.Errorf("%s: faint marks on %s are %.2f:1, below 3", name, s.what, got)
