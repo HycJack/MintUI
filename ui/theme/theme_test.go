@@ -49,6 +49,14 @@ func TestIsDarkComparesLuminanceNotIdentity(t *testing.T) {
 	if !Dark().IsDark() || Light().IsDark() {
 		t.Error("the two shipped palettes must classify as dark and light respectively")
 	}
+	// The threshold is measured on WCAG light, not on 8-bit value, so a window
+	// half way between black and white as a number still reads dark. Pinned
+	// here because the comment on relativeLuminance has to be believed.
+	mid := Light()
+	mid.Background = ui.Hex("#808080")
+	if !mid.IsDark() {
+		t.Error("#808080 read light: the 0.5 crossing is on perceptual light, not bytes")
+	}
 }
 
 func TestTextIsReadableOnEverySurface(t *testing.T) {

@@ -73,11 +73,20 @@ func (k Tokens) IsDark() bool {
 }
 
 // relativeLuminance is how bright a colour looks, 0 for black and 1 for white.
-// The weights are WCAG's for sRGB rather than a plain average, so IsDark and
-// the contrast assertions in the tests are asking about the same light.
+// The weights and the curve are WCAG's for sRGB rather than a plain average,
+// so IsDark and the contrast assertions in the tests are asking about the same
+// light.
 //
-// Half is the turning point because it is the middle of the range: a window
-// below it is closer to black than white and wants light glyphs.
+// Half is the midpoint of that light, not of the byte range. WCAG's curve puts
+// the weighting where the eye is, and the eye resolves shadows far more finely
+// than highlights, so sRGB #808080 — half way between black and white by value
+// — is 0.216 here and reads dark; the crossing is nearer #bcbcbc. That follows
+// from the scale rather than being a slip in it, and it is harmless where it
+// bites: at #808080 either glyph colour is legible (3.59:1 for the dark theme's
+// #f4f4f5, 4.49:1 for the light theme's #18181b), so calling such a window dark
+// cannot make it unreadable. Both shipped palettes are far outside the band
+// where the question arises — #ffffff is 1.000, #111113 is 0.006 — and so is
+// any background a caller is likely to invent.
 func relativeLuminance(c ui.Color) float64 {
 	f := func(v uint8) float64 {
 		x := float64(v) / 255
