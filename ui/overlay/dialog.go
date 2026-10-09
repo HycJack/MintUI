@@ -194,7 +194,10 @@ func (r AlertDialogResult) Chosen() int {
 //
 // Escape is read from the backdrop rather than left to layer, because an
 // alert has to answer a dismissal with the button a person meant rather than
-// with nothing happening.
+// with nothing happening — and only a modal alert reads it, because asking is
+// a registration, and the registration is what takes the delivery. An alert
+// that asked while it was only non-modal would swallow the Escape of a modal
+// layer underneath it, and its own buttons are how a question is answered.
 func AlertDialog(c *ui.Context, open *bool, opts AlertDialogOptions) AlertDialogResult {
 	if open == nil {
 		panic("overlay: AlertDialog needs the *bool it opens and closes")
@@ -215,7 +218,12 @@ func AlertDialog(c *ui.Context, open *bool, opts AlertDialogOptions) AlertDialog
 
 	res := AlertDialogResult{}
 	panel := layer(c, open, !opts.NonModal, ui.Center, func(back, p *ui.Element) {
-		if cancel >= 0 && back.OverlayShortcut(0, ui.KeyEscape) {
+		// The same guard layer puts on its own Escape read, and for the same
+		// reason: asking registers this backdrop for the key, and MyGo hands
+		// the key to the highest registration there is — which, for an alert
+		// built over a modal layer, would be this one rather than the layer
+		// underneath waiting for it.
+		if !opts.NonModal && cancel >= 0 && back.OverlayShortcut(0, ui.KeyEscape) {
 			res.chosen, res.answered = cancel, true
 			*open = false
 		}

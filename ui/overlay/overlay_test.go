@@ -431,6 +431,63 @@ func TestAlertDialogEscapeChoosesCancel(t *testing.T) {
 	}
 }
 
+// A non-modal alert is a question asked beside a page someone is still
+// working in, not an interruption, so Escape is not its key — the same key a
+// Dialog told not to be modal refuses. Its own buttons are how it is answered.
+func TestNonModalAlertDialogIgnoresEscape(t *testing.T) {
+	open, chosen := true, -1
+	tt := ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		page(c)
+		res := AlertDialog(c, &open, AlertDialogOptions{
+			Title: "Delete CB-2871?", Body: "The callback and its history go with it.",
+			Actions: []string{"Cancel", "Delete"}, NonModal: true,
+		})
+		if i := res.Chosen(); i >= 0 {
+			chosen = i
+		}
+	}, 900, 600)
+
+	tt.Key(0, ui.KeyEscape)
+	if !open {
+		t.Error("Escape closed an alert told not to be modal")
+	}
+	if chosen != -1 {
+		t.Errorf("Escape answered %d on an alert told not to be modal", chosen)
+	}
+	wantText(t, tt, "Delete CB-2871?")
+}
+
+// Asking for Escape is a registration, and the registration is what takes the
+// delivery, not the read: an alert that asked while only non-modal would
+// swallow the one key the modal layer underneath it is waiting for. The alert
+// is built last, so it is the topmost overlay and would be the one to win.
+func TestNonModalAlertLeavesEscapeForTheModalLayerUnderIt(t *testing.T) {
+	dialog, alert := true, true
+	tt := ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		page(c)
+		Dialog(c, &dialog, DialogOptions{
+			Title: "Edit callback",
+			Body:  func() { ui.Text(c, "Customer").Label("field-customer") },
+		})
+		AlertDialog(c, &alert, AlertDialogOptions{
+			Title: "Delete CB-2871?", Body: "The callback and its history go with it.",
+			Actions: []string{"Cancel", "Delete"}, NonModal: true,
+		})
+	}, 900, 600)
+
+	tt.Key(0, ui.KeyEscape)
+	if dialog {
+		t.Error("the modal dialog did not get an Escape a non-modal alert had taken")
+	}
+	if !alert {
+		t.Error("the non-modal alert closed on a key it should never have asked for")
+	}
+	wantNoText(t, tt, "Edit callback")
+	wantText(t, tt, "Delete CB-2871?")
+}
+
 // An alert nobody can answer is not an alert.
 func TestAlertDialogNeedsAnAction(t *testing.T) {
 	defer func() {

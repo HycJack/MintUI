@@ -11,11 +11,13 @@ import (
 )
 
 // The layers on this page keep their open-state for the life of the process.
-// A frame-local bool is rebuilt true every frame, and an open layer closes
-// itself on a press outside — a press it consumes — so the layer would be
+// A frame-local bool is rebuilt true every frame, and an anchored layer
+// closes itself on a press outside — a press it consumes — so it would be
 // rebuilt under every click: each click anywhere eaten, the layer back again,
 // the gallery never taking another one. Anchored controls reopen a layer the
-// reader closed on purpose.
+// reader closed on purpose. The three that own the window need it for the
+// other reason: a close has to outlive the frame that made it, or a
+// frame-local bool would put the layer straight back.
 var (
 	overlayPopoverOpen = true
 	confirmOpen        = true
@@ -313,9 +315,18 @@ func modalSection(c *ui.Context) {
 	// A dialog and an alert are both centred, so one is drawn over the
 	// other — which is a state a real window is in whenever an alert is
 	// raised from a dialog, and the only way both can be seen in one frame.
-	// A press outside any of them closes it for good (the state is the
-	// process's), so the buttons under the stage are how a reader brings
-	// one back.
+	//
+	// Being NonModal is also what leaves each of them with no way out but
+	// its own controls: layer() takes neither a press outside nor Escape
+	// from a layer that does not dim the page, so the only thing that can
+	// dismiss one of these is a control on it. Which is what each component
+	// says it does. A Dialog and a Drawer report no result of their own —
+	// their buttons report themselves and the caller writes false into the
+	// *bool — so both buttons here put the layer away, there being nothing
+	// on a gallery page for a Save to have saved. An AlertDialog hands its
+	// answer back through Chosen, and either answer ends the question. So:
+	// the buttons under the stage are how a reader brings one back, because
+	// a close has to be something a control says.
 	overlay.Dialog(c, &dialogOpen, overlay.DialogOptions{
 		Title: "Log callback", Subtitle: "记一条回访", Width: unit(c, 74), Rule: true,
 		NonModal: true,
@@ -333,15 +344,26 @@ func modalSection(c *ui.Context) {
 		},
 		Actions: func() {
 			showcase.Stack(c, 1, func() {
-				input.Button(c, "Cancel", input.ButtonOptions{})
-				input.Button(c, "Save", input.ButtonOptions{Primary: true})
+				if input.Button(c, "Cancel", input.ButtonOptions{}).Clicked() {
+					dialogOpen = false
+					c.Invalidate()
+				}
+				if input.Button(c, "Save", input.ButtonOptions{Primary: true}).Clicked() {
+					dialogOpen = false
+					c.Invalidate()
+				}
 			})
 		},
 	})
-	overlay.AlertDialog(c, &alertOpen, overlay.AlertDialogOptions{
+	if res := overlay.AlertDialog(c, &alertOpen, overlay.AlertDialogOptions{
 		Title: "Delete “Northgate Dental”?", Body: "这条回访会从三列里消失。",
 		Actions: []string{"Cancel", "Delete"}, Destructive: true, NonModal: true,
-	})
+	}); res.Chosen() >= 0 {
+		// The answer, not which answer: a gallery that deleted nothing has
+		// nothing to do with Cancel and Delete but to stop asking.
+		alertOpen = false
+		c.Invalidate()
+	}
 	overlay.Drawer(c, &drawerOpen, overlay.DrawerOptions{
 		Side: ui.End, Title: "Log callback", Subtitle: "抽屉挂在窗口的一条边上",
 		Width: unit(c, 32), Rule: true, NonModal: true,
@@ -354,11 +376,14 @@ func modalSection(c *ui.Context) {
 			})
 		},
 		Actions: func() {
-			input.Button(c, "Save", input.ButtonOptions{Primary: true})
+			if input.Button(c, "Save", input.ButtonOptions{Primary: true}).Clicked() {
+				drawerOpen = false
+				c.Invalidate()
+			}
 		},
 	})
 	ui.Row(c).FillWidth().Gap(unit(c, 2)).Children(func() {
-		ui.Text(c, "点外面关掉之后，从这里再开一次：").TextColor(k.TextFaint).
+		ui.Text(c, "用层里的按钮关掉它，再从这里打开一次：").TextColor(k.TextFaint).
 			FontSize(core.FontSize(c, theme.CaptionSize))
 		if input.Button(c, "Dialog", input.ButtonOptions{}).Clicked() {
 			dialogOpen = true
