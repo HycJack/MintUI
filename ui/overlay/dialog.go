@@ -153,8 +153,9 @@ type AlertDialogOptions struct {
 	// Body is one sentence saying what follows from the answer.
 	Body string
 	// Actions names the buttons from left to right. It is required, and the
-	// last of them is the default — the one Escape picks and Enter takes the
-	// focus to.
+	// last of them is the default — the one Enter takes the focus to. Escape
+	// picks the one labelled "Cancel", matched by name and not by place, so
+	// an alert is written with one.
 	Actions []string
 	// Destructive marks the default as the one that destroys something, so it
 	// is drawn in the danger colour rather than as the plain affirmative.

@@ -290,6 +290,30 @@ func TestNonModalDialogIgnoresEscape(t *testing.T) {
 	}
 }
 
+// NonModal says the window behind stays live, so the press on the page is
+// the page's. That is the whole of what the option promises, and it is the
+// only part of a layer that can be told not to take the window, so it is the
+// part worth pressing on.
+func TestNonModalDialogLeavesThePageBehindItClickable(t *testing.T) {
+	tt, open, edits := dialogTester(t, 900, 600, true)
+	if err := tt.Click("Edit"); err != nil {
+		t.Fatal(err)
+	}
+	wantText(t, tt, "Riverside Clinic")
+
+	// The trigger is above the panel and clear of it, so the press is on the
+	// page and nothing else: the dialog neither takes it nor closes under it.
+	if err := tt.Click("Edit"); err != nil {
+		t.Fatal(err)
+	}
+	if *edits != 2 {
+		t.Errorf("the page behind a NonModal dialog took %d presses, want 2", *edits)
+	}
+	if !*open {
+		t.Error("a press on the page behind closed a dialog told not to be modal")
+	}
+}
+
 func TestDialogNeedsSomethingToShow(t *testing.T) {
 	defer func() {
 		if recover() == nil {
@@ -360,6 +384,51 @@ func TestAlertDialogEscapeCancels(t *testing.T) {
 		t.Error("Escape left the alert open rather than picking Cancel")
 	}
 	wantNoText(t, tt, "Delete CB-2871?")
+}
+
+// Escape on an alert is an answer rather than only a dismissal, so Chosen has
+// to say which button it picked. Watching the alert close is not the same
+// thing: closing is what every dialog does with Escape, alert or not, which
+// is how an alert that closed and reported nothing at all could pass.
+//
+// The index is wherever the button labelled Cancel sits, matched by name
+// rather than by place, so both rows below are worth holding to: an alert
+// whose Cancel is last and one whose Cancel is first.
+func TestAlertDialogEscapeChoosesCancel(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		actions []string
+		want    int
+	}{
+		{"cancel last", []string{"Keep", "Cancel"}, 1},
+		{"cancel first", []string{"Cancel", "Delete"}, 0},
+	} {
+		open, chosen := true, -1
+		tt := ui.NewTester(func(c *ui.Context) {
+			core.Use(c, core.Settings{})
+			page(c)
+			res := AlertDialog(c, &open, AlertDialogOptions{
+				Title:   "Delete CB-2871?",
+				Body:    "The callback and its history go with it.",
+				Actions: tc.actions,
+			})
+			// Read inside the view, as every report in this library is: the
+			// settled pass has no key in it and reports nothing.
+			if i := res.Chosen(); i >= 0 {
+				chosen = i
+			}
+		}, 900, 600)
+
+		tt.Key(0, ui.KeyEscape)
+		if chosen != tc.want {
+			t.Errorf("%s: Escape chose %d, want %d, the index of the button labelled Cancel",
+				tc.name, chosen, tc.want)
+		}
+		if open {
+			t.Errorf("%s: Escape left the alert open rather than picking Cancel", tc.name)
+		}
+		wantNoText(t, tt, "Delete CB-2871?")
+	}
 }
 
 // An alert nobody can answer is not an alert.
