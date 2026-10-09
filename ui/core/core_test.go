@@ -151,6 +151,41 @@ func TestTheOverridesBeatTheDesktop(t *testing.T) {
 	}
 }
 
+func TestWithMessagesReplacesTheWindowsCopy(t *testing.T) {
+	// A window that swaps language passes a different map every frame, and the
+	// second one has to take over rather than lose to the first for arriving
+	// second.
+	translations := map[string]string{"greeting": "Hello"}
+	var got string
+	tt := ui.NewTester(func(c *ui.Context) {
+		Use(c, Settings{})
+		c = WithMessages(c, translations)
+		got = Messages(c)["greeting"]
+	}, 200, 100)
+	translations = map[string]string{"greeting": "你好"}
+	tt.Frame()
+	if got != "你好" {
+		t.Errorf("Messages = %q after the window changed language, want %q", got, "你好")
+	}
+}
+
+type counterKey struct{}
+
+func TestSetLocalReplacesAStoredValue(t *testing.T) {
+	var got int
+	ui.NewTester(func(c *ui.Context) {
+		Use(c, Settings{})
+		// Claim the slot first: a reader that has already run is the ordinary
+		// case, and the setter still has to answer.
+		Local(c, counterKey{}, func() int { return 0 })
+		SetLocal(c, counterKey{}, 7)
+		got = Local(c, counterKey{}, func() int { return 0 })
+	}, 200, 100)
+	if got != 7 {
+		t.Errorf("Local after SetLocal = %d, want 7", got)
+	}
+}
+
 func TestUseIsIdempotentWithinAFrame(t *testing.T) {
 	ui.NewTester(func(c *ui.Context) {
 		Use(c, Settings{})

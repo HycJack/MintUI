@@ -32,7 +32,10 @@ func Msg(c *ui.Context, key, def string) string {
 // Call it in the same frame as Use: Use replaces the window's state, and the
 // messages hang off it.
 func WithMessages(c *ui.Context, m map[string]string) *ui.Context {
-	ui.Local(c.Root(), msgKey{}, func() map[string]string { return m })
+	// Through the stored pointer, not through init: ui.Local skips init once
+	// the key exists, so a window whose copy changes between frames would
+	// keep the map it was handed first, for as long as it lived.
+	*ui.Local(c.Root(), msgKey{}, func() map[string]string { return nil }) = m
 	return c
 }
 
@@ -64,7 +67,10 @@ func Local[T any](c *ui.Context, k any, init func() T) T {
 // SetLocal stores v for k. A component that must report a change upward does
 // it in the frame after the user acted: mutate, SetLocal, then invalidate.
 func SetLocal[T any](c *ui.Context, k any, v T) {
-	ui.Local(c.Root(), k, func() T { return v })
+	// Through the stored pointer, not through init: ui.Local skips init once
+	// the key exists, so a setter would quietly do nothing to any key that
+	// Local has already been asked about.
+	*ui.Local(c.Root(), k, func() T { return v }) = v
 }
 
 // Motion returns a duration in milliseconds, scaled by the window's motion
