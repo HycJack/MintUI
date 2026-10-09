@@ -106,6 +106,51 @@ func TestUseKeepsTheFontFamilyAlreadyInEffect(t *testing.T) {
 	}
 }
 
+func TestReducedAndFontSizeFollowTheDesktop(t *testing.T) {
+	var reduced bool
+	var scaled float32
+	tt := ui.NewTester(func(c *ui.Context) {
+		Use(c, Settings{})
+		reduced = Reduced(c)
+		scaled = FontSize(c, 20)
+	}, 200, 100)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1.5})
+	tt.Frame()
+	if !reduced {
+		t.Error("ReduceMotion was set but Reduced() reported false")
+	}
+	if scaled != 30 {
+		t.Errorf("TextScale 1.5 on a 20pt size gave %v, want 30", scaled)
+	}
+}
+
+func TestTheOverridesBeatTheDesktop(t *testing.T) {
+	var reduced bool
+	var scaled float32
+	tt := ui.NewTester(func(c *ui.Context) {
+		Use(c, Settings{})
+		// Read first: a reader that has already run must not lock the window
+		// out of the answer it is about to give itself.
+		Reduced(c)
+		FontSize(c, 20)
+		c = WithReducedMotion(c, false)
+		c = WithTextScale(c, 2)
+		reduced = Reduced(c)
+		scaled = FontSize(c, 20)
+	}, 200, 100)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1.5})
+	tt.Frame()
+	// A test and a window with no desktop behind it both settle these two
+	// themselves, so the explicit setting has to win even when it is the one
+	// the desktop would not have chosen.
+	if reduced {
+		t.Error("WithReducedMotion(false) did not beat the desktop's ReduceMotion")
+	}
+	if scaled != 40 {
+		t.Errorf("WithTextScale(2) on a 20pt size gave %v, want 40", scaled)
+	}
+}
+
 func TestUseIsIdempotentWithinAFrame(t *testing.T) {
 	ui.NewTester(func(c *ui.Context) {
 		Use(c, Settings{})

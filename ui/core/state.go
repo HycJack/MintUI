@@ -78,18 +78,36 @@ func Motion(c *ui.Context, d float32) float32 {
 	return d
 }
 
+// override is the window's own answer for k, or else the one the desktop
+// gave. It is a lookup rather than a first-writer-wins slot because a reader
+// must not settle the question merely by asking first: the setters below write
+// through the same slot, and a test or a window with no desktop behind it has
+// to be able to answer after anything has already read.
+func override[T any](c *ui.Context, k any, desktop T) T {
+	if v := *ui.Local(c.Root(), k, func() *T { return nil }); v != nil {
+		return *v
+	}
+	return desktop
+}
+
+// setOverride answers k for the rest of the window's life, which is what makes
+// an explicit setting beat whatever the desktop says.
+func setOverride[T any](c *ui.Context, k any, v T) {
+	*ui.Local(c.Root(), k, func() *T { return nil }) = &v
+}
+
 // Reduced reports whether the desktop asked for reduced motion. Components that
 // animate check it through Motion; a component that would otherwise animate
 // something that only exists in motion — a spinner, a caret — should read it
 // directly and draw its resting state instead.
 func Reduced(c *ui.Context) bool {
-	return *ui.Local(c.Root(), reducedKey{}, func() bool { return false })
+	return override(c, reducedKey{}, c.Preferences().ReduceMotion)
 }
 
 // WithReducedMotion sets the window's motion preference for tests and for a
-// window that is not a real desktop window.
+// window that is not a real desktop window. It wins over the desktop's setting.
 func WithReducedMotion(c *ui.Context, on bool) *ui.Context {
-	ui.Local(c.Root(), reducedKey{}, func() bool { return on })
+	setOverride(c, reducedKey{}, on)
 	return c
 }
 
@@ -99,16 +117,17 @@ type reducedKey struct{}
 // component that sets FontSize(theme.RowSize) still follows the system setting
 // instead of ignoring it.
 func FontSize(c *ui.Context, size float32) float32 {
-	scale := *ui.Local(c.Root(), scaleKey{}, func() float32 { return 1 })
+	scale := override(c, scaleKey{}, c.Preferences().TextScale)
 	if scale <= 0 {
 		return size
 	}
 	return size * scale
 }
 
-// WithTextScale sets the desktop text scale for tests.
+// WithTextScale sets the desktop text scale for tests. Like WithReducedMotion it
+// wins over the desktop's setting.
 func WithTextScale(c *ui.Context, scale float32) *ui.Context {
-	ui.Local(c.Root(), scaleKey{}, func() float32 { return scale })
+	setOverride(c, scaleKey{}, scale)
 	return c
 }
 

@@ -56,12 +56,12 @@ func FilterRow(c *ui.Context, text string, opts FilterRowOptions) *ui.Element {
 			// A short rule standing in for the tree line a group heading has.
 			ui.Box(c).Width(u * 3).Height(1.5).Background(k.Border).Shrink(0)
 		}
-		ui.Text(c, text).TextColor(fg).FontSize(theme.RowSize).Grow(1)
+		ui.Text(c, text).TextColor(fg).FontSize(core.FontSize(c, theme.RowSize)).Grow(1)
 		if opts.Count != nil {
 			ui.Box(c).Padding(u, u*2.25, u, u*2.25).Radius(theme.PillRadius).
 				Background(chipBg).Children(func() {
 				ui.Text(c, internal.Commas(*opts.Count)).
-					TextColor(chipFg).FontSize(theme.CaptionSize)
+					TextColor(chipFg).FontSize(core.FontSize(c, theme.CaptionSize))
 			})
 		}
 	})
@@ -107,7 +107,7 @@ func Group(c *ui.Context, opts GroupOptions, body func()) GroupResult {
 			if opts.Icon != nil {
 				ui.Icon(c, opts.Icon).TextColor(k.TextMuted).Size(u*4.5, u*4.5)
 			}
-			ui.Text(c, opts.Title).TextColor(k.TextMuted).FontSize(theme.RowSize).Grow(1)
+			ui.Text(c, opts.Title).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.RowSize)).Grow(1)
 			ui.Icon(c, chevron(opts.Open)).TextColor(k.TextMuted).Size(u*4, u*4)
 		})
 		r.toggled = head.Clicked()

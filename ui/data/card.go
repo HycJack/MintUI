@@ -59,13 +59,13 @@ func Card(c *ui.Context, opts CardOptions, body func()) *ui.Element {
 					Children(opts.Header)
 			}
 			if opts.Title != "" {
-				ui.Text(c, opts.Title).TextColor(k.Text).FontSize(theme.BodySize).Bold().SingleLine()
+				ui.Text(c, opts.Title).TextColor(k.Text).FontSize(core.FontSize(c, theme.BodySize)).Bold().SingleLine()
 			}
 			if opts.Meta != "" {
-				ui.Text(c, opts.Meta).TextColor(k.TextMuted).FontSize(theme.MetaSize).SingleLine()
+				ui.Text(c, opts.Meta).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.MetaSize)).SingleLine()
 			}
 			if opts.Meta2 != "" {
-				ui.Text(c, opts.Meta2).TextColor(k.TextMuted).FontSize(theme.MetaSize).SingleLine()
+				ui.Text(c, opts.Meta2).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.MetaSize)).SingleLine()
 			}
 			if body != nil {
 				ui.Column(c).FillWidth().Children(body)
@@ -105,7 +105,7 @@ func StatLine(c *ui.Context, stats ...Stat) *ui.Element {
 	return ui.Row(c).AlignItems(ui.Center).Wrap().Gap(u * 2.5).Children(func() {
 		for i, s := range stats {
 			if i > 0 {
-				ui.Text(c, "·").TextColor(k.TextFaint).FontSize(theme.RowSize)
+				ui.Text(c, "·").TextColor(k.TextFaint).FontSize(core.FontSize(c, theme.RowSize))
 			}
 			col := k.Text
 			if s.Muted {

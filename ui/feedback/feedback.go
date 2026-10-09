@@ -75,16 +75,16 @@ func Empty(c *ui.Context, opts EmptyOptions) EmptyResult {
 			}
 		})
 		if opts.Title != "" {
-			ui.Text(c, opts.Title).TextColor(k.Text).FontSize(theme.LeadSize).Bold()
+			ui.Text(c, opts.Title).TextColor(k.Text).FontSize(core.FontSize(c, theme.LeadSize)).Bold()
 		}
 		if opts.Body != "" {
-			ui.Text(c, opts.Body).TextColor(k.TextMuted).FontSize(theme.MetaSize)
+			ui.Text(c, opts.Body).TextColor(k.TextMuted).FontSize(core.FontSize(c, theme.MetaSize))
 		}
 		if opts.Action != "" {
 			action := ui.Button(c, "").FillWidth().Height(u * 11.5).
 				Radius(theme.PillRadius).Background(k.Fill).TextColor(k.OnFill).
 				Label(opts.Action).Children(func() {
-				ui.Text(c, "+").FontSize(theme.RowSize)
+				ui.Text(c, "+").FontSize(core.FontSize(c, theme.RowSize))
 				ui.Text(c, opts.Action)
 			})
 			r.pressed = action.Clicked()
@@ -103,7 +103,7 @@ func defaultArt(c *ui.Context) {
 	ui.Box(c).Children(func() {
 		ui.Box(c).Size(dot, dot).Radius(dot / 2).Background(k2(c).Lively).Center().
 			Children(func() {
-				ui.Text(c, "+").TextColor(k2(c).Background).FontSize(22).Bold()
+				ui.Text(c, "+").TextColor(k2(c).Background).FontSize(core.FontSize(c, 22)).Bold()
 			})
 		// The tiles, drawn under the dot rather than beside it, so the pair
 		// reads as one mark.
@@ -128,6 +128,6 @@ func Toast(c *ui.Context, message string, u float32) *ui.Element {
 	return ui.Box(c).Padding(u*2.75, u*5, u*2.75, u*5).Radius(theme.PillRadius).
 		Background(k.Fill).TextColor(k.OnFill).Label(message).Shadow(
 		0, u*1.5, u*4.5, 0, ui.RGBA(0, 0, 0, 0.18)).Children(func() {
-		ui.Text(c, message).TextColor(k.OnFill).FontSize(theme.RowSize)
+		ui.Text(c, message).TextColor(k.OnFill).FontSize(core.FontSize(c, theme.RowSize))
 	})
 }

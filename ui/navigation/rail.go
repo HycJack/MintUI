@@ -39,7 +39,7 @@ func Rail(c *ui.Context, identity string, items []RailItem, tools []RailItem) *u
 			ui.Box(c).Size(side, side).Radius(side / 2).Background(k.Fill).Center().
 				Label(identity).Children(func() {
 				if in := internalInitials(identity); in != "" {
-					ui.Text(c, in).TextColor(k.OnFill).FontSize(17).Bold()
+					ui.Text(c, in).TextColor(k.OnFill).FontSize(core.FontSize(c, 17)).Bold()
 				}
 			})
 			ui.Box(c).Size(u*2.75, u*2.75).Radius(u*1.4).Background(k.Lively).
