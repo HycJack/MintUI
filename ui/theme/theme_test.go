@@ -1,31 +1,20 @@
 package theme
 
 import (
-	"math"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
 )
 
 // contrast is the WCAG ratio between two opaque colours, so a test can say
-// "this text is unreadable" instead of eyeballing a screenshot.
+// "this text is unreadable" instead of eyeballing a screenshot. It is built on
+// the same luminance IsDark uses, so the two cannot drift apart.
 func contrast(a, b ui.Color) float64 {
-	la, lb := lum(a), lum(b)
+	la, lb := relativeLuminance(a), relativeLuminance(b)
 	if la < lb {
 		la, lb = lb, la
 	}
 	return (la + 0.05) / (lb + 0.05)
-}
-
-func lum(c ui.Color) float64 {
-	f := func(v uint8) float64 {
-		x := float64(v) / 255
-		if x <= 0.03928 {
-			return x / 12.92
-		}
-		return math.Pow((x+0.055)/1.055, 2.4)
-	}
-	return 0.2126*f(c.R) + 0.7152*f(c.G) + 0.0722*f(c.B)
 }
 
 func TestPalettesDiffer(t *testing.T) {
@@ -46,6 +35,22 @@ func TestPalettesDiffer(t *testing.T) {
 	}
 }
 
+func TestIsDarkComparesLuminanceNotIdentity(t *testing.T) {
+	brand := Light()
+	brand.Background = ui.Hex("#fafafa") // still a light window
+	if brand.IsDark() {
+		t.Error("a near-white custom palette was classified as dark")
+	}
+	night := Dark()
+	night.Background = ui.Hex("#101012")
+	if !night.IsDark() {
+		t.Error("a near-black palette was classified as light")
+	}
+	if !Dark().IsDark() || Light().IsDark() {
+		t.Error("the two shipped palettes must classify as dark and light respectively")
+	}
+}
+
 func TestTextIsReadableOnEverySurface(t *testing.T) {
 	for name, k := range map[string]Tokens{"light": Light(), "dark": Dark()} {
 		for _, s := range []struct {
@@ -57,15 +62,25 @@ func TestTextIsReadableOnEverySurface(t *testing.T) {
 			{"text on surface hover", k.Text, k.SurfaceHover},
 			{"text on fill", k.OnFill, k.Fill},
 			{"muted on surface", k.TextMuted, k.Surface},
+			{"muted on surface hover", k.TextMuted, k.SurfaceHover},
 		} {
 			if got := contrast(s.fg, s.bg); got < 4.5 {
 				t.Errorf("%s: %s is %.2f:1, below the 4.5 body-text floor", name, s.what, got)
 			}
 		}
 		// Faint carries marks, not reading: the separator between a card's
-		// reference and its subject. It still has to be visible.
-		if got := contrast(k.TextFaint, k.Surface); got < 3 {
-			t.Errorf("%s: faint marks are %.2f:1, below 3", name, got)
+		// reference and its subject. It still has to be visible — under the
+		// pointer as well as at rest, which is the harder of the two.
+		for _, s := range []struct {
+			what string
+			bg   ui.Color
+		}{
+			{"surface", k.Surface},
+			{"surface hover", k.SurfaceHover},
+		} {
+			if got := contrast(k.TextFaint, s.bg); got < 3 {
+				t.Errorf("%s: faint marks on %s are %.2f:1, below 3", name, s.what, got)
+			}
 		}
 	}
 }

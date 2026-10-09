@@ -108,8 +108,8 @@ func TestStatusPairGivesCleanAPlainSurface(t *testing.T) {
 	if hex(bg) != "#f4f4f5" {
 		t.Errorf("Clean's background = %s, want Surface #f4f4f5", hex(bg))
 	}
-	if hex(fg) != "#6b6b74" {
-		t.Errorf("Clean's ink = %s, want TextMuted #6b6b74", hex(fg))
+	if fg != k.TextMuted {
+		t.Errorf("Clean's ink = %s, want the palette's TextMuted %s", hex(fg), hex(k.TextMuted))
 	}
 	// Every other status takes the pair straight out of Severity, so a pill
 	// and a letter cannot disagree about what a Deletion looks like.

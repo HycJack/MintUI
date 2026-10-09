@@ -9,7 +9,11 @@
 // resolves a fresh set each frame, but the values themselves are constants.
 package theme
 
-import "github.com/egoist/mygo/ui"
+import (
+	"math"
+
+	"github.com/egoist/mygo/ui"
+)
 
 // Tokens is one appearance's palette.
 //
@@ -61,11 +65,28 @@ type Tokens struct {
 	Lively ui.Color
 }
 
-// IsDark reports whether k is one of the dark palettes, by comparing the
-// surfaces it was built with. Tokens carry no mode of their own so that a
-// caller can mix a dark background with a custom fill.
+// IsDark reports whether k is one of the dark palettes, by how much light its
+// background throws back. Tokens carry no mode of their own so that a caller
+// can mix a dark background with a custom fill.
 func (k Tokens) IsDark() bool {
-	return k.Background != Light().Background
+	return relativeLuminance(k.Background) < 0.5
+}
+
+// relativeLuminance is how bright a colour looks, 0 for black and 1 for white.
+// The weights are WCAG's for sRGB rather than a plain average, so IsDark and
+// the contrast assertions in the tests are asking about the same light.
+//
+// Half is the turning point because it is the middle of the range: a window
+// below it is closer to black than white and wants light glyphs.
+func relativeLuminance(c ui.Color) float64 {
+	f := func(v uint8) float64 {
+		x := float64(v) / 255
+		if x <= 0.03928 {
+			return x / 12.92
+		}
+		return math.Pow((x+0.055)/1.055, 2.4)
+	}
+	return 0.2126*f(c.R) + 0.7152*f(c.G) + 0.0722*f(c.B)
 }
 
 // Light is the library's light palette.
@@ -77,8 +98,8 @@ func Light() Tokens {
 		SurfacePressed: ui.Hex("#e4e4e7"),
 		Border:         ui.Hex("#d9d9de"),
 		Text:           ui.Hex("#18181b"),
-		TextMuted:      ui.Hex("#6b6b74"),
-		TextFaint:      ui.Hex("#8b8b95"),
+		TextMuted:      ui.Hex("#696972"),
+		TextFaint:      ui.Hex("#85858f"),
 		Fill:           ui.Hex("#1a1a1f"),
 		OnFill:         ui.Hex("#ffffff"),
 		Accent:         ui.Hex("#2563eb"),
