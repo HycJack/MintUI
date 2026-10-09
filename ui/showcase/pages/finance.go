@@ -444,6 +444,10 @@ func financeOrderSection(c *ui.Context) {
 	showcase.Section(c, "订单 · OrderEntry / OrderConfirm / OrderTable / OrderHistory / QuickTradeButtons")
 
 	bids := financeBids()
+	// Two tickets, so two kinds: they are separate orders, and choosing a type
+	// on one must not retype the other.
+	limitKind := showcase.State(c, "finance.order.limit", finance.OrderLimit)
+	marketKind := showcase.State(c, "finance.order.market", finance.OrderMarket)
 
 	// The two tickets beside each other, the two tables on the full width
 	// below: an orders table is seven columns of figures, and a third of this
@@ -453,14 +457,14 @@ func financeOrderSection(c *ui.Context) {
 			showcase.Field(c, "OrderEntry — 名义金额写在数量下面")
 			finance.OrderEntry(c, finance.OrderEntryOptions{
 				Instrument: finance.Symbol{Ticker: "RIVR", Exchange: "L", Name: "Riverside Clinic"},
-				Side:       finance.SideBid, Kind: finance.OrderLimit,
+				Side:       finance.SideBid, Kind: limitKind,
 				Price: &limit, Size: &size, Last: 101.25, Maximum: 50000,
 				Currency: "USD", Label: "Order ticket",
 			})
 			showcase.Field(c, "OrderEntry — 市价单，没有限价")
 			finance.OrderEntry(c, finance.OrderEntryOptions{
 				Instrument: finance.Symbol{Ticker: "RIVR", Exchange: "L", Name: "Riverside Clinic"},
-				Side:       finance.SideAsk, Kind: finance.OrderMarket,
+				Side:       finance.SideAsk, Kind: marketKind,
 				Price: &marketPrice, Size: &marketSize, Last: 101.25, Currency: "USD",
 				Label: "Order ticket",
 			})

@@ -751,9 +751,14 @@ func findSection(c *ui.Context) {
 	showcase.Section(c, "查找 · FindWidget / SearchPanel / CodeMatchTokens")
 
 	showcase.Field(c, "FindWidget — 计数在条子里，因为「4/212」才是答案，框里的字只是一半")
+	// Held across frames: the bar types into both of them and the close button
+	// empties the query, so a pair of this frame's strings would take back
+	// every edit on the frame after it was made.
+	findQuery := showcase.State(c, "code.find.query", "Height")
+	findReplace := showcase.State(c, "code.find.replace", "opts.Height")
 	code.FindWidget(c, code.FindOptions{
-		Label: "Find in file", Query: "Height", Found: 12, At: 3,
-		Replace: "opts.Height", CanReplace: true, Closeable: true,
+		Label: "Find in file", Query: findQuery, Found: 12, At: 3,
+		Replace: findReplace, CanReplace: true, Closeable: true,
 		Regex: true,
 	})
 

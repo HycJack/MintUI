@@ -212,7 +212,10 @@ type FindOptions struct {
 	// Label names the widget; it is required.
 	Label string
 	// Query is what to look for, and Found is how many places it was found.
-	Query string
+	// It is the caller's string because the bar types into it: a query of the
+	// component's own would be this frame's copy, and everything a person
+	// found would be a string nobody could search for again.
+	Query *string
 	// Found is how many matches, and At which one the widget is on, counted
 	// from zero.
 	Found, At int
@@ -227,8 +230,9 @@ type FindOptions struct {
 	// Replace is the other field, and is empty when the caller is only
 	// looking. Empty does not draw the field, rather than drawing it empty:
 	// a find bar with a replace box in it says the feature is there whether
-	// or not it is wanted.
-	Replace string
+	// or not it is wanted. It is the caller's string for the same reason
+	// Query is.
+	Replace *string
 	// CanReplace says a replace field is wanted at all.
 	CanReplace bool
 	// Closeable puts a button that empties the query.
@@ -270,13 +274,21 @@ func FindWidget(c *ui.Context, opts FindOptions) FindResult {
 		panic("code: FindWidget needs a Label; a bar of numbers with no name cannot be found by " +
 			"a screen reader or by a test")
 	}
+	if opts.Query == nil {
+		panic("code: FindWidget needs a Query to point at; the bar types into it, and it " +
+			"keeps no query of its own")
+	}
+	if opts.CanReplace && opts.Replace == nil {
+		panic("code: FindWidget needs a Replace to point at when CanReplace; the bar types " +
+			"into it, and it keeps no replacement of its own")
+	}
 	k, u := core.Tokens(c), core.Density(c).Unit()
 
 	var r FindResult
 	host := ui.Row(c).FillWidth().Shrink(0).Gap(u).AlignItems(ui.Center).
 		Role(ui.RoleGroup).Label(opts.Label)
 	host.Children(func() {
-		in := ui.TextInputBase(c, &opts.Query).Label(opts.Label).
+		in := ui.TextInputBase(c, opts.Query).Label(opts.Label).
 			Height(core.ControlHeight(c) - u).Radius(theme.SmallRadius).
 			Background(k.Background).TextColor(k.Text)
 		host.Children(func() {
@@ -303,7 +315,7 @@ func FindWidget(c *ui.Context, opts FindOptions) FindResult {
 			// empty of matches the moment a query has not been typed at all,
 			// and saying "1/0" for that is a small lie a reader has to notice.
 			say := itoa(opts.Found) + " matches"
-			if opts.Query == "" {
+			if *opts.Query == "" {
 				say = ""
 			}
 			CodeCaption(c, say)
@@ -316,7 +328,7 @@ func FindWidget(c *ui.Context, opts FindOptions) FindResult {
 		}
 		if opts.CanReplace {
 			host.Children(func() {
-				rep := ui.TextInputBase(c, &opts.Replace).
+				rep := ui.TextInputBase(c, opts.Replace).
 					Label(core.Msg(c, "code.replaceWith", core.Def("Replace with"))).
 					Height(core.ControlHeight(c) - u).Radius(theme.SmallRadius).
 					Background(k.Background).TextColor(k.Text)
@@ -341,7 +353,7 @@ func FindWidget(c *ui.Context, opts FindOptions) FindResult {
 			host.Children(func() {
 				off := codeTabClose(c, core.Msg(c, "code.closeFind", core.Def("Close find")))
 				if off.Clicked() {
-					opts.Query = ""
+					*opts.Query = ""
 					r.closed = true
 				}
 			})

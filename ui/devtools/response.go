@@ -277,8 +277,11 @@ type LogStreamOptions struct {
 	Lines []LogLine
 	// Level is the quietest level shown, and everything louder comes with
 	// it. It is the caller's so that the filter survives the pane being
-	// closed and reopened.
-	Level LogLevel
+	// closed and reopened, and it is a pointer because the level buttons
+	// are what write it: Options arrives by value, so a Level of the
+	// component's own was filtered by this frame's choice and the next
+	// frame undid it.
+	Level *LogLevel
 	// Search is the text matched against the message and the source.
 	Search string
 	// Follow keeps the view at the end of the stream, for a log that is
@@ -316,8 +319,12 @@ func (r LogStreamResult) Shown() int { return r.shown }
 // limit keeps the newest, because during an incident the line that just
 // arrived is the one being looked for.
 func LogStream(c *ui.Context, opts LogStreamOptions) LogStreamResult {
+	if opts.Level == nil {
+		panic("devtools: LogStream needs a Level to point at; the level buttons write it, " +
+			"and it keeps no filter of its own")
+	}
 	k, u := core.Tokens(c), core.Density(c).Unit()
-	shown := FilterLogs(opts.Lines, opts.Level, opts.Search, opts.Limit)
+	shown := FilterLogs(opts.Lines, *opts.Level, opts.Search, opts.Limit)
 
 	var r LogStreamResult
 	r.shown = len(shown)
@@ -331,9 +338,9 @@ func LogStream(c *ui.Context, opts LogStreamOptions) LogStreamResult {
 			for _, lvl := range []LogLevel{Debug, Info, Warn, Error} {
 				lvl := lvl
 				if input.Button(c, lvl.String(), input.ButtonOptions{
-					Primary: lvl == opts.Level,
+					Primary: lvl == *opts.Level,
 				}).Clicked() {
-					opts.Level = lvl
+					*opts.Level = lvl
 				}
 			}
 		})

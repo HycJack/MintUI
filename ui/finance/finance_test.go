@@ -1156,12 +1156,13 @@ func TestSymbolSearch(t *testing.T) {
 
 func TestOrderEntry(t *testing.T) {
 	price, size := 51.00, 100.0
+	kind := OrderLimit
 	placing := false
 	tt := ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})
 		OrderEntry(c, OrderEntryOptions{
 			Instrument: Symbol{Ticker: "RIVR", Exchange: "LSE"},
-			Side:       SideBid, Kind: OrderLimit, Price: &price, Size: &size,
+			Side:       SideBid, Kind: &kind, Price: &price, Size: &size,
 			Last: 52.40, Maximum: 10_000, Placing: placing, Currency: "USD",
 		})
 	}, 460, 460)
@@ -1177,9 +1178,9 @@ func TestOrderEntry(t *testing.T) {
 	tooBig := 5000.0
 	ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})
-		p := 51.0
+		p, kind := 51.0, OrderLimit
 		OrderEntry(c, OrderEntryOptions{
-			Instrument: Symbol{Ticker: "RIVR"}, Side: SideBid, Kind: OrderLimit,
+			Instrument: Symbol{Ticker: "RIVR"}, Side: SideBid, Kind: &kind,
 			Price: &p, Size: &tooBig, Last: 52.40, Maximum: 10_000, Placing: false,
 		})
 	}, 440, 440)
@@ -1192,9 +1193,9 @@ func TestOrderEntry(t *testing.T) {
 	presses := 0
 	tt2 := ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})
-		p, s, placing := 51.0, 100.0, false
+		p, s, placing, kind := 51.0, 100.0, false, OrderLimit
 		if OrderEntry(c, OrderEntryOptions{
-			Instrument: Symbol{Ticker: "RIVR"}, Side: SideBid, Kind: OrderLimit,
+			Instrument: Symbol{Ticker: "RIVR"}, Side: SideBid, Kind: &kind,
 			Price: &p, Size: &s, Last: 52.40, Placing: placing,
 		}).Submitting() {
 			presses++
@@ -1222,6 +1223,69 @@ func TestOrderEntry(t *testing.T) {
 			})
 		}, 400, 400)
 	})
+	wantsPanic(t, "a ticket with no kind to point at", func() {
+		ui.NewTester(func(c *ui.Context) {
+			core.Use(c, core.Settings{})
+			p, s := 1.0, 1.0
+			OrderEntry(c, OrderEntryOptions{
+				Instrument: Symbol{Ticker: "RIVR"}, Price: &p, Size: &s, Last: 1,
+			})
+		}, 400, 400)
+	})
+}
+
+// TestOrderKindSegmentActuallyChangesTheOrderKind: the kind is the caller's,
+// and a segmented bound to a local could not be chosen at all — the ticket
+// said Market, Limit, Stop and took whichever one it started as.
+func TestOrderKindSegmentActuallyChangesTheOrderKind(t *testing.T) {
+	kind := OrderMarket
+	price, size := 10.0, 1.0
+	tt := ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		OrderEntry(c, OrderEntryOptions{
+			Instrument: Symbol{Ticker: "AC-1", Exchange: "LSE"},
+			Kind:       &kind, Price: &price, Size: &size,
+			Currency: "USD", Label: "Entry",
+		})
+	}, 500, 400)
+	if err := tt.Click("Limit"); err != nil {
+		t.Fatal(err)
+	}
+	if kind != OrderLimit {
+		t.Errorf("clicking Limit left Kind = %v, want %v", kind, OrderLimit)
+	}
+	if err := tt.Click("Stop"); err != nil {
+		t.Fatal(err)
+	}
+	if kind != OrderStop {
+		t.Errorf("clicking Stop left Kind = %v, want %v", kind, OrderStop)
+	}
+}
+
+// TestTwoTicketsKeepTheirOwnOrderKind: two tickets on one screen are two
+// orders, and a limit beside a market must stay a market. It is why the
+// segment's index is this frame's own variable rather than a slot shared by
+// every ticket in the window — the gallery draws exactly this pair.
+func TestTwoTicketsKeepTheirOwnOrderKind(t *testing.T) {
+	limitKind, marketKind := OrderLimit, OrderMarket
+	p1, s1, p2, s2 := 51.0, 100.0, 52.0, 50.0
+	ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		OrderEntry(c, OrderEntryOptions{
+			Instrument: Symbol{Ticker: "RIVR"}, Label: "Limit ticket",
+			Kind: &limitKind, Price: &p1, Size: &s1, Last: 52.4,
+		})
+		OrderEntry(c, OrderEntryOptions{
+			Instrument: Symbol{Ticker: "SOLR"}, Label: "Market ticket",
+			Kind: &marketKind, Price: &p2, Size: &s2, Last: 52.4,
+		})
+	}, 520, 640)
+	if limitKind != OrderLimit {
+		t.Errorf("the limit ticket is %v after being drawn, want Limit", limitKind)
+	}
+	if marketKind != OrderMarket {
+		t.Errorf("the market ticket is %v after being drawn, want Market", marketKind)
+	}
 }
 
 func TestOrderConfirm(t *testing.T) {
@@ -1913,6 +1977,7 @@ func TestDarkModeDrawsEveryComponent(t *testing.T) {
 	contracts := testContracts()
 	price, size := 51.0, 100.0
 	placing, confirm := false, true
+	ticketKind := OrderLimit
 	lev := 4.0
 	selected, tickSelected := 0, 0
 	sent, snoozed := 51.0, 100.0
@@ -1971,7 +2036,7 @@ func TestDarkModeDrawsEveryComponent(t *testing.T) {
 			Results: 5,
 		})
 		OrderEntry(c, OrderEntryOptions{
-			Instrument: Symbol{Ticker: "RIVR"}, Side: SideBid, Kind: OrderLimit,
+			Instrument: Symbol{Ticker: "RIVR"}, Side: SideBid, Kind: &ticketKind,
 			Price: &price, Size: &size, Last: 52.4, Maximum: 10_000,
 			Placing: placing, Currency: "USD",
 		})

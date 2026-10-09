@@ -318,11 +318,16 @@ func callbackSchema() devtools.SchemaNode {
 func loglineSection(c *ui.Context) {
 	showcase.Section(c, "日志 · LogStream / FilterLogs")
 	lines := logLines()
+	// Three streams, three levels: the buttons write whichever one the reader
+	// pressed, so a level read from a constant would be this frame's.
+	allLevel := showcase.State(c, "devtools.logs.all", devtools.Info)
+	warnLevel := showcase.State(c, "devtools.logs.warn", devtools.Warn)
+	noneLevel := showcase.State(c, "devtools.logs.none", devtools.Debug)
 	showcase.Field(c, "LogStream — 五级都在，最新的在下面；筛选之后是几行也写出来")
 	ui.Row(c).FillWidth().Gap(unit(c, 4)).AlignItems(ui.Start).Children(func() {
 		ui.Column(c).WidthPercent(62).Shrink(0).Gap(unit(c, 2)).Children(func() {
 			stream := devtools.LogStream(c, devtools.LogStreamOptions{
-				Lines: lines, Level: devtools.Info, Follow: true, Height: unit(c, 40),
+				Lines: lines, Level: allLevel, Follow: true, Height: unit(c, 40),
 			})
 			resultLine(c, "LogStream.Shown()", itoaOf(stream.Shown()))
 
@@ -330,7 +335,7 @@ func loglineSection(c *ui.Context) {
 			ui.Row(c).FillWidth().Gap(unit(c, 2)).Children(func() {
 				ui.Column(c).WidthPercent(60).Shrink(0).Children(func() {
 					devtools.LogStream(c, devtools.LogStreamOptions{
-						Lines: lines, Level: devtools.Warn, Search: "db",
+						Lines: lines, Level: warnLevel, Search: "db",
 						Limit: 2, Height: unit(c, 14),
 					})
 				})
@@ -348,7 +353,7 @@ func loglineSection(c *ui.Context) {
 		ui.Column(c).WidthPercent(36).Shrink(0).Gap(unit(c, 2)).Children(func() {
 			showcase.Field(c, "LogStream — 筛完什么都没有")
 			devtools.LogStream(c, devtools.LogStreamOptions{
-				Lines: lines, Level: devtools.Debug, Search: "nothing says this",
+				Lines: lines, Level: noneLevel, Search: "nothing says this",
 				Empty: func() {
 					display.Text(c, "Nothing in the last hour says that.",
 						display.TextOptions{Muted: true})

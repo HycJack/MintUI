@@ -317,11 +317,15 @@ func TestResponseViewerNeedsItsTabs(t *testing.T) {
 
 // ── LogStream ──────────────────────────────────────────────────────────────
 
+// logLevel is the level a stream is pointed at. The level buttons write it, so
+// it has to be an address rather than this frame's copy of a word.
+func logLevel(l LogLevel) *LogLevel { return &l }
+
 func TestLogStreamShowsEveryLine(t *testing.T) {
 	level := Debug
 	tt := ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})
-		LogStream(c, LogStreamOptions{Lines: logs(), Level: level})
+		LogStream(c, LogStreamOptions{Lines: logs(), Level: &level})
 	}, 720, 420)
 	for _, want := range []string{
 		"Log", "Lines", "6", "DEBUG", "INFO", "WARN", "ERROR", "FATAL",
@@ -338,7 +342,7 @@ func TestLogStreamFiltersByLevel(t *testing.T) {
 	shown := 0
 	tt := ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})
-		r := LogStream(c, LogStreamOptions{Lines: logs(), Level: level})
+		r := LogStream(c, LogStreamOptions{Lines: logs(), Level: &level})
 		if r.Shown() > 0 {
 			shown = r.Shown()
 		}
@@ -352,10 +356,33 @@ func TestLogStreamFiltersByLevel(t *testing.T) {
 	}
 }
 
+// TestLogLevelButtonActuallyChangesTheCallersLevel: the level buttons wrote
+// the frame's copy of Level, so the filter a log is read through never moved
+// and the count in the header never changed.
+func TestLogLevelButtonActuallyChangesTheCallersLevel(t *testing.T) {
+	level := Debug
+	shown := 0
+	tt := ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		if r := LogStream(c, LogStreamOptions{Lines: logs(), Level: &level}); r.Shown() > 0 {
+			shown = r.Shown()
+		}
+	}, 720, 420)
+	if shown != len(logs()) {
+		t.Fatalf("every line should be shown at Debug, got %d of %d", shown, len(logs()))
+	}
+	if err := tt.Click("WARN"); err != nil {
+		t.Fatal(err)
+	}
+	if level != Warn {
+		t.Errorf("clicking WARN left Level = %v, want %v", level, Warn)
+	}
+}
+
 func TestLogStreamWithNothingMatching(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})
-		LogStream(c, LogStreamOptions{Lines: logs(), Level: Debug, Search: "zzzz"})
+		LogStream(c, LogStreamOptions{Lines: logs(), Level: logLevel(Debug), Search: "zzzz"})
 	}, 720, 240)
 	if !tt.HasText("No lines match") {
 		t.Errorf("the empty state is missing; %q", tt.Texts())
@@ -367,7 +394,7 @@ func TestLogStreamShowsTheCallersEmptyState(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})
 		LogStream(c, LogStreamOptions{
-			Lines: nil, Level: Debug,
+			Lines: nil, Level: logLevel(Debug),
 			Empty: func() {
 				ui.Text(c, "Nothing logged yet")
 				drew = true
@@ -377,6 +404,15 @@ func TestLogStreamShowsTheCallersEmptyState(t *testing.T) {
 	if !tt.HasText("Nothing logged yet") || !drew {
 		t.Errorf("the caller's empty state should be drawn; %q", tt.Texts())
 	}
+}
+
+func TestLogStreamNeedsACallersLevel(t *testing.T) {
+	panics(t, "devtools: LogStream needs a Level", func() {
+		ui.NewTester(func(c *ui.Context) {
+			core.Use(c, core.Settings{})
+			LogStream(c, LogStreamOptions{Lines: logs()})
+		}, 560, 240)
+	})
 }
 
 // ── AlertList ──────────────────────────────────────────────────────────────
@@ -1085,7 +1121,7 @@ func TestDevtoolsSurvivesTheDarkPalette(t *testing.T) {
 			Body: sampleJSON, Duration: "1.2 s", Size: "4.1 kB",
 			Tab: &tab, Tabbed: &tabbed,
 		})
-		LogStream(c, LogStreamOptions{Lines: logs(), Level: Debug})
+		LogStream(c, LogStreamOptions{Lines: logs(), Level: logLevel(Debug)})
 		AlertList(c, AlertListOptions{
 			Alerts: alerts(), Acknowledged: &ack, Dismissed: &dismissed,
 		})

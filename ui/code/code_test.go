@@ -955,10 +955,11 @@ func TestSymbolOutlineInDarkMode(t *testing.T) {
 }
 
 func TestFindWidgetShowsTheCounts(t *testing.T) {
+	query, replace := "callback", "cb"
 	tt := dark(t, core.Light, func(c *ui.Context) {
 		FindWidget(c, FindOptions{
-			Label: "Find", Query: "callback", Found: 12, At: 3,
-			CaseSensitive: true, CanReplace: true, Replace: "cb", Closeable: true,
+			Label: "Find", Query: &query, Found: 12, At: 3,
+			CaseSensitive: true, CanReplace: true, Replace: &replace, Closeable: true,
 		})
 	})
 	for _, want := range []string{"Find", "12 matches", "Aa", "Replace"} {
@@ -968,17 +969,42 @@ func TestFindWidgetShowsTheCounts(t *testing.T) {
 	}
 	// An empty query says nothing rather than "0 matches": there is no query,
 	// so there is no such thing as its matches.
+	none := ""
 	empty := dark(t, core.Light, func(c *ui.Context) {
-		FindWidget(c, FindOptions{Label: "Find"})
+		FindWidget(c, FindOptions{Label: "Find", Query: &none})
 	})
 	if empty.HasText("matches") {
 		t.Errorf("a find bar with no query must not count: %q", empty.Texts())
 	}
 }
 
+// TestFindQueryTypingActuallyReachesTheCaller: the find bar is bound to the
+// caller's string, and bound to this frame's copy of it instead, so nothing a
+// person typed ever became a query and Closed() reported an empty bar it had
+// not emptied.
+func TestFindQueryTypingActuallyReachesTheCaller(t *testing.T) {
+	query := ""
+	tt := ui.NewTester(func(c *ui.Context) {
+		core.Use(c, core.Settings{})
+		FindWidget(c, FindOptions{Label: "Find", Query: &query})
+	}, 640, 140)
+	// The bar and its field share a name, so the name finds the bar; the field
+	// is at the left of it, which is where a person clicks to type.
+	bar, ok := tt.Find("Find")
+	if !ok {
+		t.Fatalf("the find bar is not on the page: %q", tt.Texts())
+	}
+	tt.ClickAt(bar.X+bar.W*0.1, bar.Y+bar.H/2)
+	tt.Type("callback")
+	if query != "callback" {
+		t.Errorf("the caller's query is %q after typing %q", query, "callback")
+	}
+}
+
 func TestFindWidgetInDarkMode(t *testing.T) {
 	tt := dark(t, core.Dark, func(c *ui.Context) {
-		FindWidget(c, FindOptions{Label: "Find", Query: "x", Found: 1})
+		query := "x"
+		FindWidget(c, FindOptions{Label: "Find", Query: &query, Found: 1})
 	})
 	if !tt.HasText("1 matches") {
 		t.Errorf("the find bar must be there in the dark window too: %q", tt.Texts())
@@ -1173,6 +1199,19 @@ func TestEveryComponentInsistsOnWhatItCannotDrawWithout(t *testing.T) {
 			ui.NewTester(func(c *ui.Context) {
 				core.Use(c, core.Settings{})
 				FindWidget(c, FindOptions{})
+			}, 300, 200)
+		}},
+		{"a find bar with no query to point at", func() {
+			ui.NewTester(func(c *ui.Context) {
+				core.Use(c, core.Settings{})
+				FindWidget(c, FindOptions{Label: "Find"})
+			}, 300, 200)
+		}},
+		{"a find bar replacing into nothing", func() {
+			ui.NewTester(func(c *ui.Context) {
+				core.Use(c, core.Settings{})
+				q := "callback"
+				FindWidget(c, FindOptions{Label: "Find", Query: &q, CanReplace: true})
 			}, 300, 200)
 		}},
 		{"a search panel with no name", func() {

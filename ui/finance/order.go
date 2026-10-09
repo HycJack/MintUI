@@ -46,8 +46,11 @@ type OrderEntryOptions struct {
 	// defaulted to is how an order for the wrong side gets sent.
 	Side Side
 	// Kind is the order type, and Price the limit or trigger price. A market
-	// order leaves Price alone.
-	Kind  OrderKind
+	// order leaves Price alone. It is a pointer because the segment that
+	// chooses it is a control the caller has to be able to read back: Options
+	// arrives by value, so a Kind of its own here was written and lost in the
+	// same frame.
+	Kind  *OrderKind
 	Price *float64
 	// Size is how much, in shares. It is a pointer because the size field and
 	// the notional figure under it are two views of one number and a caller
@@ -105,6 +108,10 @@ func OrderEntry(c *ui.Context, opts OrderEntryOptions) OrderEntryResult {
 	if opts.Size == nil {
 		panic("finance: OrderEntry needs a Size to point at; it keeps no size of its own")
 	}
+	if opts.Kind == nil {
+		panic("finance: OrderEntry needs a Kind to point at; the order type is the caller's " +
+			"because a ticket that chose its own would send an order nobody asked for")
+	}
 	k, u := core.Tokens(c), core.Density(c).Unit()
 	label := opts.Label
 	if label == "" {
@@ -140,9 +147,17 @@ func OrderEntry(c *ui.Context, opts OrderEntryOptions) OrderEntryResult {
 				FontSize(core.FontSize(c, theme.BodySize)).Bold()
 		})
 
-		input.Segmented(c, kindIndex(&opts.Kind), "Market", "Limit", "Stop")
+		// Segmented only speaks *int and hands nothing back, so the index is
+		// read out of the caller's Kind and written straight back to it. The
+		// seed has to be the caller's own value and not a slot kept under a
+		// key: MyGo builds a frame in more than one pass, the click lands in
+		// an earlier one than the last, and a seed that never learns of the
+		// click would be copied back over it on the pass after.
+		idx := int(*opts.Kind)
+		input.Segmented(c, &idx, "Market", "Limit", "Stop")
+		*opts.Kind = OrderKind(idx)
 
-		if opts.Kind != OrderMarket {
+		if *opts.Kind != OrderMarket {
 			input.NumberInput(c, opts.Price, input.NumberInputOptions{
 				Label: "Price", Step: 0.01, Suffix: opts.Currency,
 				Max: &opts.Last, Width: 0,
@@ -200,15 +215,6 @@ func submitLabel(opts OrderEntryOptions) string {
 		return "Sending…"
 	}
 	return verb + " " + FormatSize(*opts.Size) + " " + opts.Instrument.Ticker
-}
-
-// kindIndex is an order kind as the index a Segmented matches on, written out
-// once so the two can never drift apart — a segmented that highlighted "Limit"
-// while the ticket took a stop order's price would be a ticket that sends the
-// wrong order without saying so.
-func kindIndex(kind *OrderKind) *int {
-	i := int(*kind)
-	return &i
 }
 
 func zeroRef() *float64 { z := 0.0; return &z }
