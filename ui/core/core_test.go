@@ -77,6 +77,35 @@ func TestTokensBeforeUsePanic(t *testing.T) {
 	}
 }
 
+func TestUseGivesMyGoAUsableFontSize(t *testing.T) {
+	var got float32
+	ui.NewTester(func(c *ui.Context) {
+		Use(c, Settings{})
+		got = c.Theme().FontSize
+	}, 200, 100)
+	// MyGo lays plain ui.Text out from this, so a zero here is not a
+	// cosmetic slip: every widget and every run of library text falls back to
+	// MyGo's own default size and the two stop agreeing.
+	if got != theme.BodySize {
+		t.Errorf("c.Theme().FontSize = %v, want the library's body size %v", got, theme.BodySize)
+	}
+}
+
+func TestUseKeepsTheFontFamilyAlreadyInEffect(t *testing.T) {
+	const family = "Inter"
+	var got string
+	ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(&ui.Theme{Font: family})
+		Use(c, Settings{})
+		got = c.Theme().Font
+	}, 200, 100)
+	// Use re-themes the window rather than building one from nothing, so the
+	// family the window already had has to survive it.
+	if got != family {
+		t.Errorf("c.Theme().Font = %q, want the window's own %q", got, family)
+	}
+}
+
 func TestUseIsIdempotentWithinAFrame(t *testing.T) {
 	ui.NewTester(func(c *ui.Context) {
 		Use(c, Settings{})

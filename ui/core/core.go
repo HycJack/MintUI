@@ -114,6 +114,12 @@ func Use(c *ui.Context, s Settings) {
 		ScrollbarWidth: 10,
 		Radius:         theme.ControlRadius,
 		Spacing:        density.Unit(),
+		// The type is the library's own, scaled with everything else it
+		// draws, so a MyGo widget and the text beside it read as one page.
+		// The family is left as it was: the library names none, so wiping
+		// the window's would only undo a choice the caller made.
+		FontSize: FontSize(c, theme.BodySize),
+		Font:     c.Theme().Font,
 	})
 
 	*ui.Local(c.Root(), key{}, func() window { return window{} }) =
