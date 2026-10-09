@@ -79,14 +79,48 @@ func TestPagesDrawWhatTheyPromised(t *testing.T) {
 
 // TestPagesDrawInBothAppearances: a gallery is also how a dark-palette bug
 // gets seen, and a bug that only shows after dark is the one nobody looks for.
+//
+// Both appearances are rendered here for the same reason useForShowcase is
+// always light: the window the gallery runs in follows the desktop, so a page
+// has to be looked at twice before either picture can be called the page. A
+// component that only paints under one palette — a name computed from the
+// light background, a section guarded by IsDark — is invisible in every
+// screenshot and in every other test on this file, because Draw renders light
+// and nothing else did.
+//
+// The count is the engine's own, not paintedTexts': this asks whether a page
+// put anything on the screen at all under this palette, and the smallest
+// answer to that is the strings the frame reported, labels included. Want is
+// checked separately, in light, by TestPagesDrawWhatTheyPromised.
+//
+// The shape this cannot see is a string that is reported, laid out, and then
+// painted in the colour it sits on — an ink taken from the window rather than
+// from the box it is drawn inside. paintedTexts tells that apart from the
+// frame and is not reachable from here, so it goes unseen here, and Want is
+// only read under light. A component that does it passes both gates. It is
+// worth looking for by eye in both appearances, which is what the gallery is.
 func TestPagesDrawInBothAppearances(t *testing.T) {
 	for _, p := range showcase.Sorted() {
-		drawn := p.Draw()
-		if len(drawn) < 3 {
-			t.Errorf("%s drew %d texts: %v", p.Package, len(drawn), drawn)
+		for _, mode := range []core.Mode{core.Light, core.Dark} {
+			t.Run(p.Package+"/"+modeName(mode), func(t *testing.T) {
+				tt := ui.NewTester(func(c *ui.Context) {
+					core.Use(c, core.Settings{Mode: mode})
+					p.Paint(c)
+				}, p.Width, p.Height)
+				drawn := tt.Texts()
+				if len(drawn) < 3 {
+					t.Errorf("%s in %s drew %d texts: %v",
+						p.Package, mode, len(drawn), drawn)
+				}
+			})
 		}
 	}
 }
+
+// modeName names an appearance the way the subtests above are named, in lower
+// case. core.Mode already prints one word for each, and going through it keeps
+// a third mode from needing a second list here.
+func modeName(m core.Mode) string { return strings.ToLower(m.String()) }
 
 // stubPage is a page whose only content is what the test draws, so a test can
 // say what a person would be looking at without a gallery page in the way. It
