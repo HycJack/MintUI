@@ -424,6 +424,28 @@ k, u := core.Tokens(c), core.Density(c).Unit()   // 调色板 + 间距一步
    没调 `core.Use` 就读主题、`Meter(0, …)` —— 都 `panic("pkg: …")`。
    一帧悄悄画错，比直接停下来难找得多。
 
+**破坏性变更（批次 0）：四个 `Options` 字段变成指针。** `Options` 是按值传进来的，
+所以「调用方要能读回」的字段要是值，交互处理器写的就是**这一帧的拷贝** —— 控件画得完全
+正常，却静默地什么都不做。要被写入的状态必须是调用方自己的存储，于是这四个字段改成指针：
+
+| 字段 | 旧 | 新 |
+|---|---|---|
+| `finance.OrderEntryOptions.Kind` | `Kind: kind` | `Kind: &kind` |
+| `code.FindOptions.Query` | `Query: q` | `Query: &q` |
+| `code.FindOptions.Replace` | `Replace: r` | `Replace: &r` |
+| `devtools.LogStreamOptions.Level` | `Level: l` | `Level: &l` |
+
+传 `nil` 会 panic，带的是所在组件包的缀 —— 这是契约的一部分，不是实现细节：
+静默忽略 `nil` 正是这四个控件以前读起来「像能用」的原因。
+
+- `finance: OrderEntry needs a Kind to point at…`
+- `code: FindWidget needs a Query to point at…`
+- `code: FindWidget needs a Replace to point at…`
+- `devtools: LogStream needs a Level to point at…`
+
+`Replace` 是唯一带条件的：只在 `CanReplace` 时才要求非 nil —— 没开替换就不画那个框。
+为什么种子必须每趟写回、不能指望它自己重新播种，见 §21.4。
+
 ### 14.3 组件索引
 
 签名里的 `c` 和返回值从略；参数是 `XxxOptions` 的写 `(opts)`。
